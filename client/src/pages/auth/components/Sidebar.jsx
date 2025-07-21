@@ -8,16 +8,18 @@ import { config } from '../../../firebase/Firebase';
 import { useContext } from 'react';
 import { AuthContext } from '../../../AuthContext';
 import { useNavigate } from "react-router-dom";
+import ChangePasswordPopup from "../components/ChangePasswordPopup";
 
 const house = <FontAwesomeIcon icon={faHouse} />
 const profile = <FontAwesomeIcon icon={faUser} />
 const inbox = <FontAwesomeIcon icon={faInbox} />
 const logout = <FontAwesomeIcon icon={faArrowRightFromBracket} rotation={180} />
-
+    
 function Sidebar(props) {
     const { isLoggedIn, setIsLoggedIn } = useContext(AuthContext);
     const selected = props.selected;
     const name = props.adminName;
+    const [showPopup, setShowPopup] = useState(false);
     const navigate = useNavigate();
     function logOut() {
         signOut(config.auth).then(() => {
@@ -49,12 +51,17 @@ function Sidebar(props) {
                     </div>
                 )}
 
+                <div className="mt-3">
+                    <button className="text-xl me-10 w-52 h-10 hover:bg-indigo-300 hover:bg-opacity-60 hover:rounded-tl-[19px] hover:rounded-bl-[19px] ps-2 pt-1" onClick={() => setShowPopup(true)}>Change Password</button>
+                    {showPopup && <ChangePasswordPopup onClose={() => setShowPopup(false)} />}
+                </div>
 
                 <div className="w-52 h-10 hover:bg-indigo-300 hover:bg-opacity-60 hover:rounded-tl-[19px] hover:rounded-bl-[19px] ps-2 pt-1">
                     <button className="text-xl" onClick={logOut}>{logout}</button>-
                     <button className="text-xl ms-3 exo" onClick={logOut}>Log Out</button>
                 </div>
             </div>
+            
         </nav>
     )
 }

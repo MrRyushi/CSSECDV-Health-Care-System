@@ -35,6 +35,13 @@ function ClinicAdminDashboard() {
         return newEmail;
     }
 
+        
+    function isPasswordComplex(password) {
+        const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=\-{}[\]|:;"'<>,.?/~`]).{12,}$/;
+        return regex.test(password);
+    }
+
+
     useEffect(() => {
         try {
             async function getClinicName() {
@@ -88,6 +95,11 @@ function ClinicAdminDashboard() {
         const email = e.target['email'].value;
         const password = e.target['password'].value;
         const emailFormatted = formatEmail(email);
+
+        if (!isPasswordComplex(password)) {
+            alert("Password must be at least 12 characters long and include an uppercase letter, lowercase letter, number, and special character.");
+            return; 
+        }
 
         setFormData({
             ...formData,
