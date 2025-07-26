@@ -1,30 +1,59 @@
 // ChangePasswordPopup.jsx
 import React, { useState } from 'react';
 import { getAuth, updatePassword } from 'firebase/auth';
+import { getFirestore, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import bcrypt from 'bcryptjs';
 
 const ChangePasswordPopup = ({ onClose }) => {
     const [newPassword, setNewPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const db = getFirestore();
+
+    const PASSWORD_HISTORY_LIMIT = 5; // only keep last 5 passwords
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
         const auth = getAuth();
         const user = auth.currentUser;
+        const userRef = doc(db, 'users', user.uid);
 
-        // Password strength check (optional, use your existing function here)
         if (newPassword.length < 12) {
             setError("Password must be at least 12 characters long.");
             return;
         }
 
         try {
+            const docSnap = await getDoc(userRef);
+            const passwordHistory = docSnap.exists() ? docSnap.data().passwordHistory || [] : [];
+
+            // Hash the new password
+            const newHash = await bcrypt.hash(newPassword, 10);
+
+            // Check against old hashes
+            const isReused = await Promise.any(passwordHistory.map(ph => bcrypt.compare(newPassword, ph.hash)))
+                .then(() => true)
+                .catch(() => false); // none matched
+
+            if (isReused) {
+                setError("You cannot reuse a recent password.");
+                return;
+            }
+
+            // ✅ Update Firebase password
             await updatePassword(user, newPassword);
+
+            // ✅ Save new hash to history
+            const updatedHistory = [ { hash: newHash, changedAt: Date.now() }, ...passwordHistory ]
+                .slice(0, PASSWORD_HISTORY_LIMIT); // Keep only recent N
+
+            await setDoc(userRef, { passwordHistory: updatedHistory }, { merge: true });
+
             setSuccess("Password updated successfully.");
             setError('');
         } catch (err) {
             console.error(err);
-            setError(err.message);
+            setError(err.message || 'An error occurred.');
             setSuccess('');
         }
     };
