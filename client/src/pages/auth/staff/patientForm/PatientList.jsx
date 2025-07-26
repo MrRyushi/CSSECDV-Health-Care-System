@@ -162,70 +162,87 @@ function PatientList() {
     }
   }
 
-    // get full name of staff
-    useEffect(() => {
-        try {
-            async function getPatientDoc() {
-                const unsubscribe = onAuthStateChanged(config.auth, async (user) => {
-                    if (user) {
-                        const docRef = doc(db, "clinicStaffs", user.uid);
-                        const docSnap = await getDoc(docRef);
-                        try {
-
-                            const clinicName = docSnap.data().clinicName;
-                            setClinics(clinicName);
-                            const docRefClinic = doc(db, clinicName, "staff", "staffList", user.uid);
-                            const docSnapClinic = await getDoc(docRefClinic);
-                            if (docSnapClinic.exists()) {
-                                setFullName(docSnapClinic.data().firstname + " " + docSnapClinic.data().lastname);
-                            } else {
-                                console.log("No such document!");
-                            }
-                        }
-                        catch (error) {
-                            console.log("Processing");
-                        }
-                    }
-                });
+  // get full name of staff
+  useEffect(() => {
+    try {
+      async function getPatientDoc() {
+        const unsubscribe = onAuthStateChanged(
+          config.auth,
+          async (user) => {
+            if (user) {
+              const docRef = doc(
+                db,
+                "clinicStaffs",
+                user.uid
+              );
+              const docSnap = await getDoc(docRef);
+              try {
+                const clinicName =
+                  docSnap.data().clinicName;
+                setClinics(clinicName);
+                const docRefClinic = doc(
+                  db,
+                  clinicName,
+                  "staff",
+                  "staffList",
+                  user.uid
+                );
+                const docSnapClinic = await getDoc(
+                  docRefClinic
+                );
+                if (docSnapClinic.exists()) {
+                  setFullName(
+                    docSnapClinic.data().firstname +
+                      " " +
+                      docSnapClinic.data().lastname
+                  );
+                } else {
+                  console.log("No such document!");
+                }
+              } catch (error) {
+                console.log("Processing");
+              }
             }
-            getPatientDoc();
-
-        } catch (error) {
-            console.log(error)
-        }
-    })
-
-    
-    function isPasswordComplex(password) {
-        const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=\-{}[\]|:;"'<>,.?/~`]).{12,}$/;
-        return regex.test(password);
+          }
+        );
+      }
+      getPatientDoc();
+    } catch (error) {
+      console.log(error);
     }
+  });
 
+  function isPasswordComplex(password) {
+    const regex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=\-{}[\]|:;"'<>,.?/~`]).{12,}$/;
+    return regex.test(password);
+  }
 
   async function initializeClinic(e) {
     e.preventDefault();
     const emailFormatted = email;
 
-
-        if (!isPasswordComplex(password)) {
-            alert("Password must be at least 12 characters long and include an uppercase letter, lowercase letter, number, and special character.");
-            return; 
-        }
-        setFormData({
-            ...formData,
-            firstName,
-            middleName,
-            lastName,
-            email,
-            emailFormatted,
-            password,
-            phoneNumber,
-            streetAddress,
-            sex,
-            bloodType,
-            emergencyContactName,
-            emergencyContactNumber,
-            allergies,
+    if (!isPasswordComplex(password)) {
+      alert(
+        "Password must be at least 12 characters long and include an uppercase letter, lowercase letter, number, and special character."
+      );
+      return;
+    }
+    setFormData({
+      ...formData,
+      firstName,
+      middleName,
+      lastName,
+      email,
+      emailFormatted,
+      password,
+      phoneNumber,
+      streetAddress,
+      sex,
+      bloodType,
+      emergencyContactName,
+      emergencyContactNumber,
+      allergies,
 
       relativeName,
       relationshipWithRelative,
@@ -343,7 +360,7 @@ function PatientList() {
         function sendEmail() {
           emailjs
             .send(
-              "service_t8pkk4o",
+              "service_wck5i1f",
               "template_x65vfmj",
               formData,
               "guzJ5EN-eKEHV_0jW"
