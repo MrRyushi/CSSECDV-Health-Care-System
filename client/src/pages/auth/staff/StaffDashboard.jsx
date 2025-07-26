@@ -442,7 +442,7 @@ function StaffDashboard() {
               "service_wck5i1f",
               "template_x65vfmj",
               formData,
-              "guzJ5EN-eKEHV_0jW"
+              "ylfQTgllFvn4pU4Yw"
             )
             .then(
               (result) => {
@@ -586,7 +586,7 @@ function StaffDashboard() {
                   if (
                     errorCode == "auth/email-already-in-use"
                   ) {
-                    alert("Email is already in use");
+                    alert("Invalid email address");
                   } else if (
                     errorCode == "auth/weak-password"
                   ) {

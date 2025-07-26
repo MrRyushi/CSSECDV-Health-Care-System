@@ -164,12 +164,13 @@ function AdminDashboard() {
 
         // EMAIL CREDENTIALS
         function sendEmail() {
+          console.log("Sending email with data:", formData);
           emailjs
             .send(
               "service_wck5i1f",
-              "template_x65vfmj",
+              "template_odoejph",
               formData,
-              "guzJ5EN-eKEHV_0jW"
+              "ylfQTgllFvn4pU4Yw"
             )
             .then(
               (result) => {
@@ -177,8 +178,17 @@ function AdminDashboard() {
                 alert("Email sent successfully!");
               },
               (error) => {
-                console.error("Email error:", error.text);
-                alert("Failed to send email.");
+                console.error(
+                  "Email error details:",
+                  error
+                );
+                console.error(
+                  "Email error text:",
+                  error.text
+                );
+                alert(
+                  "Failed to send email. Check console for details."
+                );
               }
             );
         }

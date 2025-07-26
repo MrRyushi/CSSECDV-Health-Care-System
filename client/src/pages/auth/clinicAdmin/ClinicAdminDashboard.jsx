@@ -141,9 +141,9 @@ function ClinicAdminDashboard() {
           emailjs
             .send(
               "service_wck5i1f",
-              "template_x65vfmj",
+              "template_odoejph",
               formData,
-              "guzJ5EN-eKEHV_0jW"
+              "ylfQTgllFvn4pU4Yw"
             )
             .then(
               (result) => {
