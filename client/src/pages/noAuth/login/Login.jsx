@@ -1,4 +1,3 @@
-// Import necessary Firebase authentication functions
 import {
   setPersistence,
   signInWithEmailAndPassword,
@@ -64,8 +63,7 @@ function Login() {
     setLockoutMessage("");
 
     const email = document.getElementById("email").value;
-    const password =
-      document.getElementById("password").value;
+    const password = document.getElementById("password").value;
 
     // Check if user is locked out before attempting login
     const lockoutStatus = await checkLockoutStatus(email);
@@ -79,14 +77,13 @@ function Login() {
     }
 
     try {
-      const userCredentials =
-        await signInWithEmailAndPassword(
-          config.auth,
-          email,
-          password
-        );
+      const userCredentials = await signInWithEmailAndPassword(
+        config.auth,
+        email,
+        password
+      );
 
-      // Successful login - reset attempts (this will create document if it doesn't exist)
+      // Successful login - reset attempts
       await resetLoginAttempts(email);
 
       const uid = userCredentials.user.uid;
@@ -114,16 +111,14 @@ function Login() {
         { merge: true }
       );
 
-      // Split email on the @
-      var emailParts = email.split("@");
-      // Split again for every "."
-      var domainParts = emailParts[1].split(".");
-      // Grab account type since it's the second part ALWAYS
-      var accountType = domainParts[domainParts.length - 2];
+      // Extract account type from email domain
+      const emailParts = email.split("@");
+      const domainParts = emailParts[1].split(".");
+      const accountType = domainParts[domainParts.length - 2];
       user.accountType = accountType;
       user.uid = userCredentials.user.uid;
       user.credentials = userCredentials;
-      // Set isLoggedIn to true after successful login
+
       setIsLoggedIn(true);
 
       if (user.accountType === "clinic") {
@@ -147,20 +142,14 @@ function Login() {
         await recordFailedAttempt(email);
 
         // Check lockout status after recording the attempt
-        const updatedLockoutStatus =
-          await checkLockoutStatus(email);
+        const updatedLockoutStatus = await checkLockoutStatus(email);
 
         // Get user-friendly message
-        const message = getLockoutMessage(
-          updatedLockoutStatus
-        );
+        const message = getLockoutMessage(updatedLockoutStatus);
         setLockoutMessage(message);
       } catch (firestoreError) {
-        // If Firestore operations fail, still show generic error
         console.error("Firestore error:", firestoreError);
-        setLockoutMessage(
-          "Invalid username and/or password."
-        );
+        setLockoutMessage("Invalid username and/or password.");
       }
 
       console.log(error);
@@ -170,10 +159,7 @@ function Login() {
   };
 
   return (
-    <div
-      id="loginPage"
-      className="flex justify-center items-center h-screen w-screen"
-    >
+    <div id="loginPage" className="flex justify-center items-center h-screen w-screen">
       <Transition.Root show={open} as={Fragment}>
         <Dialog
           as="div"
@@ -222,32 +208,20 @@ function Login() {
                         </Dialog.Title>
                         <div className="mt-2">
                           <p className="text-sm text-gray-500">
-                            Assuming you enter a verified
-                            email address, an email will be
-                            sent to you containing a link to
-                            reset your password.
+                            Assuming you enter a verified email address, an email will be sent to you containing a link to reset your password.
                           </p>
                           <br />
                           {resetSent ? (
-                            <p>
-                              Password reset email sent.
-                              Check your inbox.
-                            </p>
+                            <p>Password reset email sent. Check your inbox.</p>
                           ) : (
                             <form onSubmit={handleReset}>
-                              <label htmlFor="email">
-                                Enter your email:
-                              </label>
+                              <label htmlFor="email">Enter your email:</label>
                               <input
                                 type="email"
                                 id="email"
                                 value={email}
-                                onChange={(e) =>
-                                  setEmail(e.target.value)
-                                }
-                                style={{
-                                  marginLeft: "20px",
-                                }}
+                                onChange={(e) => setEmail(e.target.value)}
+                                style={{ marginLeft: "20px" }}
                                 placeholder="Enter your Email Address"
                               />
                             </form>
@@ -283,77 +257,34 @@ function Login() {
           </div>
         </Dialog>
       </Transition.Root>
+
       <div className="w-screen h-3/4">
         <div className="mb-5">
-          <h1 className="enriqueta text-center text-2xl">
-            Health Center System
-          </h1>
+          <h1 className="enriqueta text-center text-2xl">Health Center System</h1>
         </div>
 
         <form
           id="shadow"
           action=""
-          className="bg-slate-50 
-                                    h-max 
-                                    lg:w-2/6
-                                    sm:w-5/12
-                                    w-full
-                                    rounded-lg
-                                    place-items-center
-                                    p-10
-                                    mx-auto"
+          className="bg-slate-50 h-max lg:w-2/6 sm:w-5/12 w-full rounded-lg place-items-center p-10 mx-auto"
         >
-          <h1 className="exo font-bold text-xl mb-4">
-            Sign in to your account
-          </h1>
-          <label
-            htmlFor="email"
-            className="lato text-sm mt-10"
-          >
-            Your email
-          </label>
+          <h1 className="exo font-bold text-xl mb-4">Sign in to your account</h1>
+          <label htmlFor="email" className="lato text-sm mt-10">Your email</label>
           <input
             type="text"
             id="email"
             placeholder="Email"
-            className="rounded-lg
-                            border
-                            block 
-                            w-full
-                            mb-5 
-                            h-9 
-                            mx-auto 
-                            ps-4 
-                                    "
+            className="rounded-lg border block w-full mb-5 h-9 mx-auto ps-4"
           />
-          <label
-            htmlFor="password"
-            className="lato text-sm mt-10"
-          >
-            Password
-          </label>
+          <label htmlFor="password" className="lato text-sm mt-10">Password</label>
           <input
             type="password"
             id="password"
             placeholder="Password"
-            className="rounded-lg
-                            border 
-                            block 
-                            w-full
-                            h-9 
-                            mx-auto 
-                            mb-5 
-                            ps-4 
-                            "
+            className="rounded-lg border block w-full h-9 mx-auto mb-5 ps-4"
           />
           <a
-            className="block
-                            w-full
-                            mx-auto
-                            text-blue-600
-                            text-center 
-                            mb-5
-                            hover:underline"
+            className="block w-full mx-auto text-blue-600 text-center mb-5 hover:underline"
             onClick={() => {
               setOpen(true);
             }}
@@ -382,17 +313,11 @@ function Login() {
           <button
             onClick={authenticate}
             disabled={isLoading}
-            className={`rounded-full 
-                            text-slate-50
-                            w-full 
-                            h-10 
-                            font-bold
-                            lato
-                            ${
-                              isLoading
-                                ? "bg-gray-400 cursor-not-allowed"
-                                : "bg-blue-700 hover:bg-blue-600"
-                            }`}
+            className={`rounded-full w-full h-10 font-bold lato text-slate-50 ${
+              isLoading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-700 hover:bg-blue-600"
+            }`}
           >
             {isLoading ? "Signing in..." : "Sign in"}
           </button>
@@ -401,4 +326,5 @@ function Login() {
     </div>
   );
 }
+
 export default Login;
