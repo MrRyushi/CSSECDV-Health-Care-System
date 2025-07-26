@@ -85,6 +85,14 @@ const ChangePasswordPopup = ({ onClose }) => {
                 <form onSubmit={handleChangePassword}>
                     <input
                         type="password"
+                        placeholder="Enter current password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                        style={styles.input}
+                    />
+                    <input
+                        type="password"
                         placeholder="Enter new password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
