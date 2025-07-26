@@ -4,8 +4,8 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
 } from "firebase/auth";
-import { config, user } from "../../../firebase/Firebase";
-
+import { config, user, db } from "../../../firebase/Firebase";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 // Import React dependencies
 import React, { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -14,6 +14,7 @@ import { AuthContext } from "../../../AuthContext";
 import { Fragment, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+
 
 function Login() {
   const [open, setOpen] = useState(false);
@@ -42,7 +43,25 @@ function Login() {
     var password =
       document.getElementById("password").value;
     signInWithEmailAndPassword(config.auth, email, password)
-      .then((userCredentials) => {
+      .then(async (userCredentials) => {
+        const uid = userCredentials.user.uid;
+        const userRef = doc(db, "userLogins", uid);
+
+        // Fetch previous login info
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.lastLogin) {
+            alert(`Last login was on: ${new Date(data.lastLogin.toDate()).toLocaleString()}`);
+          }
+        }
+
+        // Update login time
+        await setDoc(userRef, {
+          lastLogin: new Date(),
+        }, { merge: true });
+
+
         // Split email on the @
         var emailParts = email.split("@");
         // Split again for every "."
