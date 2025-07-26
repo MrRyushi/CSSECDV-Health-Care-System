@@ -83,6 +83,12 @@ const ChangePasswordPopup = ({ onClose }) => {
 
             setSuccess("Password updated successfully.");
             setError('');
+
+            // Close the popup after 1-second delay
+            setTimeout(() => {
+                onClose();
+            }, 1000);
+
         } catch (err) {
             console.error(err);
             setError(err.message || 'An error occurred.');
