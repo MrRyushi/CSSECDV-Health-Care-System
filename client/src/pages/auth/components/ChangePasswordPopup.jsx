@@ -1,7 +1,6 @@
-// ChangePasswordPopup.jsx
 import React, { useState } from 'react';
 import { getAuth, updatePassword } from 'firebase/auth';
-import { getFirestore, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import bcrypt from 'bcryptjs';
 
 const ChangePasswordPopup = ({ onClose }) => {
@@ -10,7 +9,8 @@ const ChangePasswordPopup = ({ onClose }) => {
     const [success, setSuccess] = useState('');
     const db = getFirestore();
 
-    const PASSWORD_HISTORY_LIMIT = 5; // only keep last 5 passwords
+    const PASSWORD_HISTORY_LIMIT = 5;
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
@@ -25,15 +25,30 @@ const ChangePasswordPopup = ({ onClose }) => {
 
         try {
             const docSnap = await getDoc(userRef);
-            const passwordHistory = docSnap.exists() ? docSnap.data().passwordHistory || [] : [];
+            const userData = docSnap.exists() ? docSnap.data() : {};
+            const passwordHistory = userData.passwordHistory || [];
+            const lastChanged = userData.lastPasswordChange;
 
-            // Hash the new password
+            // 🔐 Check if 24 hours have passed
+            if (lastChanged) {
+                const now = Date.now();
+                const diff = now - lastChanged;
+
+                if (diff < ONE_DAY_MS) {
+                    const hoursLeft = Math.ceil((ONE_DAY_MS - diff) / (60 * 60 * 1000));
+                    setError(`You can only change your password once every 24 hours. Try again in ${hoursLeft} hour(s).`);
+                    return;
+                }
+            }
+
+            // 🧂 Hash new password
             const newHash = await bcrypt.hash(newPassword, 10);
 
-            // Check against old hashes
-            const isReused = await Promise.any(passwordHistory.map(ph => bcrypt.compare(newPassword, ph.hash)))
-                .then(() => true)
-                .catch(() => false); // none matched
+            // ⛔ Check if reused
+            const reuseResults = await Promise.all(
+                passwordHistory.map(ph => bcrypt.compare(newPassword, ph.hash))
+            );
+            const isReused = reuseResults.some(result => result === true);
 
             if (isReused) {
                 setError("You cannot reuse a recent password.");
@@ -43,11 +58,16 @@ const ChangePasswordPopup = ({ onClose }) => {
             // ✅ Update Firebase password
             await updatePassword(user, newPassword);
 
-            // ✅ Save new hash to history
-            const updatedHistory = [ { hash: newHash, changedAt: Date.now() }, ...passwordHistory ]
-                .slice(0, PASSWORD_HISTORY_LIMIT); // Keep only recent N
+            // 📝 Update Firestore: save hash + last changed timestamp
+            const updatedHistory = [
+                { hash: newHash, changedAt: Date.now() },
+                ...passwordHistory
+            ].slice(0, PASSWORD_HISTORY_LIMIT);
 
-            await setDoc(userRef, { passwordHistory: updatedHistory }, { merge: true });
+            await setDoc(userRef, {
+                passwordHistory: updatedHistory,
+                lastPasswordChange: Date.now()
+            }, { merge: true });
 
             setSuccess("Password updated successfully.");
             setError('');
@@ -81,6 +101,7 @@ const ChangePasswordPopup = ({ onClose }) => {
     );
 };
 
+// Same style object as before...
 const styles = {
     overlay: {
         position: 'fixed',
@@ -115,5 +136,6 @@ const styles = {
         border: 'none',
     }
 };
+
 
 export default ChangePasswordPopup;
