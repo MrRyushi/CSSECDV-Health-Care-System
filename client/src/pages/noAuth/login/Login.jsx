@@ -63,25 +63,16 @@ function Login() {
     setLockoutMessage("");
 
     const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    // Check if user is locked out before attempting login
-    const lockoutStatus = await checkLockoutStatus(email);
-
-    if (lockoutStatus.isLocked) {
-      setLockoutMessage(
-        `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
-      );
-      setIsLoading(false);
-      return;
-    }
+    const password =
+      document.getElementById("password").value;
 
     try {
-      const userCredentials = await signInWithEmailAndPassword(
-        config.auth,
-        email,
-        password
-      );
+      const userCredentials =
+        await signInWithEmailAndPassword(
+          config.auth,
+          email,
+          password
+        );
 
       // Successful login - reset attempts
       await resetLoginAttempts(email);
@@ -114,7 +105,8 @@ function Login() {
       // Extract account type from email domain
       const emailParts = email.split("@");
       const domainParts = emailParts[1].split(".");
-      const accountType = domainParts[domainParts.length - 2];
+      const accountType =
+        domainParts[domainParts.length - 2];
       user.accountType = accountType;
       user.uid = userCredentials.user.uid;
       user.credentials = userCredentials;
@@ -137,19 +129,67 @@ function Login() {
         navigate("/patient");
       }
     } catch (error) {
-      try {
-        // Record failed attempt
-        await recordFailedAttempt(email);
+      // Debug: Log the actual error to see what Firebase returns
+      console.log("Firebase error code:", error.code);
+      console.log("Firebase error message:", error.message);
 
-        // Check lockout status after recording the attempt
-        const updatedLockoutStatus = await checkLockoutStatus(email);
+      // Check if the error is due to user not found (account doesn't exist)
+      const isUserNotFound =
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/invalid-email" ||
+        error.code === "auth/invalid-login-credentials" ||
+        (error.message &&
+          error.message
+            .toLowerCase()
+            .includes("user-not-found")) ||
+        (error.message &&
+          error.message
+            .toLowerCase()
+            .includes("invalid-email")) ||
+        (error.message &&
+          error.message
+            .toLowerCase()
+            .includes("invalid-login-credentials"));
 
-        // Get user-friendly message
-        const message = getLockoutMessage(updatedLockoutStatus);
-        setLockoutMessage(message);
-      } catch (firestoreError) {
-        console.error("Firestore error:", firestoreError);
-        setLockoutMessage("Invalid username and/or password.");
+      console.log("Is user not found?", isUserNotFound);
+
+      if (isUserNotFound) {
+        // Account doesn't exist - show generic error without lockout logic
+        setLockoutMessage(
+          "Invalid username and/or password."
+        );
+      } else {
+        // Account exists but password is wrong - apply lockout logic
+        try {
+          // Check if user is locked out before recording failed attempt
+          const lockoutStatus = await checkLockoutStatus(
+            email
+          );
+
+          if (lockoutStatus.isLocked) {
+            setLockoutMessage(
+              `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
+            );
+          } else {
+            // Record failed attempt
+            await recordFailedAttempt(email);
+
+            // Check lockout status after recording the attempt
+            const updatedLockoutStatus =
+              await checkLockoutStatus(email);
+
+            // Get user-friendly message
+            const message = getLockoutMessage(
+              updatedLockoutStatus
+            );
+            setLockoutMessage(message);
+          }
+        } catch (firestoreError) {
+          console.error("Firestore error:", firestoreError);
+          setLockoutMessage(
+            "Invalid username and/or password."
+          );
+        }
       }
 
       console.log(error);
@@ -159,7 +199,10 @@ function Login() {
   };
 
   return (
-    <div id="loginPage" className="flex justify-center items-center h-screen w-screen">
+    <div
+      id="loginPage"
+      className="flex justify-center items-center h-screen w-screen"
+    >
       <Transition.Root show={open} as={Fragment}>
         <Dialog
           as="div"
@@ -208,20 +251,32 @@ function Login() {
                         </Dialog.Title>
                         <div className="mt-2">
                           <p className="text-sm text-gray-500">
-                            Assuming you enter a verified email address, an email will be sent to you containing a link to reset your password.
+                            Assuming you enter a verified
+                            email address, an email will be
+                            sent to you containing a link to
+                            reset your password.
                           </p>
                           <br />
                           {resetSent ? (
-                            <p>Password reset email sent. Check your inbox.</p>
+                            <p>
+                              Password reset email sent.
+                              Check your inbox.
+                            </p>
                           ) : (
                             <form onSubmit={handleReset}>
-                              <label htmlFor="email">Enter your email:</label>
+                              <label htmlFor="email">
+                                Enter your email:
+                              </label>
                               <input
                                 type="email"
                                 id="email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                style={{ marginLeft: "20px" }}
+                                onChange={(e) =>
+                                  setEmail(e.target.value)
+                                }
+                                style={{
+                                  marginLeft: "20px",
+                                }}
                                 placeholder="Enter your Email Address"
                               />
                             </form>
@@ -260,7 +315,9 @@ function Login() {
 
       <div className="w-screen h-3/4">
         <div className="mb-5">
-          <h1 className="enriqueta text-center text-2xl">Health Center System</h1>
+          <h1 className="enriqueta text-center text-2xl">
+            Health Center System
+          </h1>
         </div>
 
         <form
@@ -268,15 +325,27 @@ function Login() {
           action=""
           className="bg-slate-50 h-max lg:w-2/6 sm:w-5/12 w-full rounded-lg place-items-center p-10 mx-auto"
         >
-          <h1 className="exo font-bold text-xl mb-4">Sign in to your account</h1>
-          <label htmlFor="email" className="lato text-sm mt-10">Your email</label>
+          <h1 className="exo font-bold text-xl mb-4">
+            Sign in to your account
+          </h1>
+          <label
+            htmlFor="email"
+            className="lato text-sm mt-10"
+          >
+            Your email
+          </label>
           <input
             type="text"
             id="email"
             placeholder="Email"
             className="rounded-lg border block w-full mb-5 h-9 mx-auto ps-4"
           />
-          <label htmlFor="password" className="lato text-sm mt-10">Password</label>
+          <label
+            htmlFor="password"
+            className="lato text-sm mt-10"
+          >
+            Password
+          </label>
           <input
             type="password"
             id="password"
