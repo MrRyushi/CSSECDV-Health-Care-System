@@ -94,6 +94,31 @@ function AdminDashboard() {
     });
   }
 
+  // EMAIL CREDENTIALS - Move function outside useEffect
+  const sendEmail = () => {
+    console.log("Sending email with data:", formData);
+    emailjs
+      .send(
+        "service_wck5i1f",
+        "template_odoejph",
+        formData,
+        "ylfQTgllFvn4pU4Yw"
+      )
+      .then(
+        (result) => {
+          console.log("Email sent:", result.text);
+          alert("Email sent successfully!");
+        },
+        (error) => {
+          console.error("Email error details:", error);
+          console.error("Email error text:", error.text);
+          alert(
+            "Failed to send email. Check console for details."
+          );
+        }
+      );
+  };
+
   useEffect(() => {
     if (formData.email) {
       try {
@@ -109,43 +134,77 @@ function AdminDashboard() {
             formData.emailFormatted,
             formData.password
           )
-            .then((userCredential) => {
-              // Add a new document
-              setDoc(
-                doc(
-                  config.firestore,
-                  formData.clinicName,
-                  "admin"
-                ),
-                {
-                  firstname: formData.firstName,
-                  lastname: formData.lastName,
-                  email: formData.email,
+            .then(async (userCredential) => {
+              try {
+                console.log(
+                  "User created successfully, starting Firestore operations..."
+                );
+
+                // Add a new document
+                await setDoc(
+                  doc(
+                    config.firestore,
+                    formData.clinicName,
+                    "admin"
+                  ),
+                  {
+                    firstname: formData.firstName,
+                    lastname: formData.lastName,
+                    email: formData.email,
+                  }
+                );
+                console.log(
+                  "First Firestore operation completed"
+                );
+
+                // Save admin user uid and information
+                await setDoc(
+                  doc(
+                    config.firestore,
+                    "clinicAdmins",
+                    userCredential.user.uid
+                  ),
+                  {
+                    clinicName: formData.clinicName,
+                  }
+                );
+                console.log(
+                  "Second Firestore operation completed"
+                );
+
+                // Signed up
+                const user = userCredential.user;
+
+                // Only send email after successful user creation and Firestore operations
+                sendEmail();
+                console.log("Email sent successfully");
+
+                // SignOut 2nd authentication - don't let this fail the whole operation
+                try {
+                  await signOut(getAuth(signInAuth.auth));
+                  console.log(
+                    "Sign-out completed successfully"
+                  );
+                } catch (signOutError) {
+                  // Sign-out failed, but don't fail the whole operation
+                  console.warn(
+                    "Sign-out failed:",
+                    signOutError
+                  );
                 }
-              );
-              // Save admin user uid and information
-              setDoc(
-                doc(
-                  config.firestore,
-                  "clinicAdmins",
-                  userCredential.user.uid
-                ),
-                {
-                  clinicName: formData.clinicName,
-                }
-              );
-              // Signed up
-              const user = userCredential.user;
-              sendEmail();
-              // SignOut 2nd authentication
-              signOut(getAuth(signInAuth.auth))
-                .then(() => {
-                  // Sign-out successful.
-                })
-                .catch((error) => {
-                  // An error happened.
-                });
-              // ...
+
+                console.log(
+                  "All operations completed successfully"
+                );
+              } catch (firestoreError) {
+                console.error(
+                  "Firestore operation failed:",
+                  firestoreError
+                );
+                alert(
+                  "Admin account created but failed to save additional data. Please contact support."
+                );
+              }
             })
             .catch((error) => {
               // Log error securely without exposing details
@@ -167,37 +226,6 @@ function AdminDashboard() {
                 );
               }
             });
-        }
-
-        // EMAIL CREDENTIALS
-        function sendEmail() {
-          console.log("Sending email with data:", formData);
-          emailjs
-            .send(
-              "service_wck5i1f",
-              "template_odoejph",
-              formData,
-              "ylfQTgllFvn4pU4Yw"
-            )
-            .then(
-              (result) => {
-                console.log("Email sent:", result.text);
-                alert("Email sent successfully!");
-              },
-              (error) => {
-                console.error(
-                  "Email error details:",
-                  error
-                );
-                console.error(
-                  "Email error text:",
-                  error.text
-                );
-                alert(
-                  "Failed to send email. Check console for details."
-                );
-              }
-            );
         }
       } catch (error) {
         console.error("Error initializing clinic:", error);

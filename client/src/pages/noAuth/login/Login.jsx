@@ -182,36 +182,28 @@ function Login() {
       );
       await logSystemError(error, "login-attempt");
 
-      // For auth/invalid-login-credentials, we need to check if the account exists
-      // by trying to fetch user data from Firestore or checking if there's a loginAttempts record
+      // For auth/invalid-login-credentials, the account exists but credentials are wrong
+      // Always apply lockout logic for this error
       if (error.code === "auth/invalid-login-credentials") {
         try {
-          // Check if there's already a loginAttempts record for this email
+          // Check if user is locked out before recording failed attempt
           const lockoutStatus = await checkLockoutStatus(
             email
           );
 
-          if (lockoutStatus.attempts > 0) {
-            // Account has been used before (exists) - apply lockout logic
-            if (lockoutStatus.isLocked) {
-              setLockoutMessage(
-                `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
-              );
-            } else {
-              // Record failed attempt
-              await recordFailedAttempt(email);
-              const updatedLockoutStatus =
-                await checkLockoutStatus(email);
-              const message = getLockoutMessage(
-                updatedLockoutStatus
-              );
-              setLockoutMessage(message);
-            }
-          } else {
-            // No previous attempts - likely non-existent account
+          if (lockoutStatus.isLocked) {
             setLockoutMessage(
-              "Invalid username and/or password."
+              `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
             );
+          } else {
+            // Record failed attempt
+            await recordFailedAttempt(email);
+            const updatedLockoutStatus =
+              await checkLockoutStatus(email);
+            const message = getLockoutMessage(
+              updatedLockoutStatus
+            );
+            setLockoutMessage(message);
           }
         } catch (firestoreError) {
           // Log error securely without exposing details
