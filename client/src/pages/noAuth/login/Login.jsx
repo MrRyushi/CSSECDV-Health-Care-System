@@ -133,33 +133,53 @@ function Login() {
       console.log("Firebase error code:", error.code);
       console.log("Firebase error message:", error.message);
 
-      // Check if the error is due to user not found (account doesn't exist)
-      const isUserNotFound =
+      // For auth/invalid-login-credentials, we need to check if the account exists
+      // by trying to fetch user data from Firestore or checking if there's a loginAttempts record
+      if (error.code === "auth/invalid-login-credentials") {
+        try {
+          // Check if there's already a loginAttempts record for this email
+          const lockoutStatus = await checkLockoutStatus(
+            email
+          );
+
+          if (lockoutStatus.attempts > 0) {
+            // Account has been used before (exists) - apply lockout logic
+            if (lockoutStatus.isLocked) {
+              setLockoutMessage(
+                `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
+              );
+            } else {
+              // Record failed attempt
+              await recordFailedAttempt(email);
+              const updatedLockoutStatus =
+                await checkLockoutStatus(email);
+              const message = getLockoutMessage(
+                updatedLockoutStatus
+              );
+              setLockoutMessage(message);
+            }
+          } else {
+            // No previous attempts - likely non-existent account
+            setLockoutMessage(
+              "Invalid username and/or password."
+            );
+          }
+        } catch (firestoreError) {
+          console.error("Firestore error:", firestoreError);
+          setLockoutMessage(
+            "Invalid username and/or password."
+          );
+        }
+      } else if (
         error.code === "auth/user-not-found" ||
-        error.code === "auth/invalid-email" ||
-        error.code === "auth/invalid-login-credentials" ||
-        (error.message &&
-          error.message
-            .toLowerCase()
-            .includes("user-not-found")) ||
-        (error.message &&
-          error.message
-            .toLowerCase()
-            .includes("invalid-email")) ||
-        (error.message &&
-          error.message
-            .toLowerCase()
-            .includes("invalid-login-credentials"));
-
-      console.log("Is user not found?", isUserNotFound);
-
-      if (isUserNotFound) {
-        // Account doesn't exist - show generic error without lockout logic
+        error.code === "auth/invalid-email"
+      ) {
+        // Definitely non-existent account
         setLockoutMessage(
           "Invalid username and/or password."
         );
       } else {
-        // Account exists but password is wrong - apply lockout logic
+        // Other errors - apply lockout logic
         try {
           // Check if user is locked out before recording failed attempt
           const lockoutStatus = await checkLockoutStatus(
