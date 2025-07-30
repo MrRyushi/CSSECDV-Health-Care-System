@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { getAuth, updatePassword } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import bcrypt from 'bcryptjs';
 
 const ChangePasswordPopup = ({ onClose }) => {
+    const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -17,6 +19,16 @@ const ChangePasswordPopup = ({ onClose }) => {
         const auth = getAuth();
         const user = auth.currentUser;
         const userRef = doc(db, 'users', user.uid);
+
+        // Re-authenticate with current password
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+
+        try {
+            await reauthenticateWithCredential(user, credential);
+        } catch (err) {
+            setError('Current password is incorrect.');
+            return;
+        }
 
         if (newPassword.length < 12) {
             setError("Password must be at least 12 characters long.");
