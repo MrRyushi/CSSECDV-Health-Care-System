@@ -17,10 +17,19 @@ import {
   validateEmail as validateEmailField,
   validatePassword,
 } from "../../../utils/DataValidation";
-import { LogViewer } from "../../../utils/LoggingSystem";
+import {
+  LogViewer,
+  useSecurityLogging,
+} from "../../../utils/LoggingSystem";
+import { useAuthorization } from "../../../utils/AuthorizationManager";
+import { useNavigate } from "react-router-dom";
+import { generateTemporaryPassword } from "../../../utils/PasswordGenerator";
 
 function AdminDashboard() {
   const [showPopup, setShowPopup] = useState(false);
+  const { user: currentAdmin } = useAuthorization();
+  const { logEvent, logSystemError } = useSecurityLogging();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -61,19 +70,21 @@ function AdminDashboard() {
   async function initializeClinic(e) {
     e.preventDefault();
 
+    // Log admin dashboard access
+    await logEvent("admin_dashboard_accessed", "info", {
+      adminEmail: currentAdmin?.email || "unknown",
+      adminUID: currentAdmin?.uid || "unknown",
+      action: "initiate_clinic_creation",
+    });
+
     const firstName = e.target["first-name"].value;
     const lastName = e.target["last-name"].value;
     const email = e.target["email"].value;
-    const password = e.target["password"].value;
     const clinicName =
       e.target["clinicName"].value.toLowerCase();
 
-    if (!isPasswordComplex(password)) {
-      alert(
-        "Password must be at least 12 characters long and include an uppercase letter, lowercase letter, number, and special character."
-      );
-      return;
-    }
+    // Generate secure temporary password automatically
+    const tempPassword = generateTemporaryPassword(12);
 
     const clinicNameFormatted =
       formatClinicName(clinicName);
@@ -89,14 +100,13 @@ function AdminDashboard() {
       lastName,
       email,
       emailFormatted,
-      password,
+      password: tempPassword,
       clinicName,
     });
   }
 
   // EMAIL CREDENTIALS - Move function outside useEffect
   const sendEmail = () => {
-    console.log("Sending email with data:", formData);
     emailjs
       .send(
         "service_wck5i1f",
@@ -106,7 +116,6 @@ function AdminDashboard() {
       )
       .then(
         (result) => {
-          console.log("Email sent:", result.text);
           alert("Email sent successfully!");
         },
         (error) => {
@@ -124,6 +133,16 @@ function AdminDashboard() {
       try {
         // CREATE USER
         if (!validateEmail(formData.email)) {
+          // Log email validation failure
+          logEvent("input_validation_failure", "warning", {
+            adminEmail: currentAdmin?.email || "unknown",
+            adminUID: currentAdmin?.uid || "unknown",
+            field: "email",
+            reason: "invalid_email_domain",
+            targetEmail: formData.email,
+            expectedDomain: "gmail.com",
+          });
+
           alert(
             "Invalid email domain. Please use an email address with the domain 'gmail.com'"
           );
@@ -136,10 +155,6 @@ function AdminDashboard() {
           )
             .then(async (userCredential) => {
               try {
-                console.log(
-                  "User created successfully, starting Firestore operations..."
-                );
-
                 // Add a new document
                 await setDoc(
                   doc(
@@ -153,9 +168,6 @@ function AdminDashboard() {
                     email: formData.email,
                   }
                 );
-                console.log(
-                  "First Firestore operation completed"
-                );
 
                 // Save admin user uid and information
                 await setDoc(
@@ -168,47 +180,52 @@ function AdminDashboard() {
                     clinicName: formData.clinicName,
                   }
                 );
-                console.log(
-                  "Second Firestore operation completed"
-                );
 
                 // Signed up
                 const user = userCredential.user;
 
                 // Only send email after successful user creation and Firestore operations
                 sendEmail();
-                console.log("Email sent successfully");
+
+                // Log successful admin creation with admin user context
+                await logEvent("admin_created", "info", {
+                  email: formData.emailFormatted,
+                  clinicName: formData.clinicName,
+                  createdBy:
+                    currentAdmin?.email || "unknown_admin",
+                  adminUID: currentAdmin?.uid || "unknown",
+                  action: "create_clinic_admin",
+                  targetUser: formData.emailFormatted,
+                });
 
                 // SignOut 2nd authentication - don't let this fail the whole operation
                 try {
                   await signOut(getAuth(signInAuth.auth));
-                  console.log(
-                    "Sign-out completed successfully"
-                  );
                 } catch (signOutError) {
                   // Sign-out failed, but don't fail the whole operation
-                  console.warn(
-                    "Sign-out failed:",
-                    signOutError
+                  // Log this for admin review
+                  await logSystemError(
+                    signOutError,
+                    "admin-signout"
                   );
                 }
-
-                console.log(
-                  "All operations completed successfully"
-                );
               } catch (firestoreError) {
-                console.error(
-                  "Firestore operation failed:",
-                  firestoreError
+                // Log error securely without exposing details
+                await logSystemError(
+                  firestoreError,
+                  "admin-creation-firestore"
                 );
                 alert(
                   "Admin account created but failed to save additional data. Please contact support."
                 );
               }
             })
-            .catch((error) => {
+            .catch(async (error) => {
               // Log error securely without exposing details
-              console.error("Admin user creation failed");
+              await logSystemError(
+                error,
+                "admin-creation-auth"
+              );
 
               if (
                 error.code == "auth/email-already-exists"
@@ -228,7 +245,8 @@ function AdminDashboard() {
             });
         }
       } catch (error) {
-        console.error("Error initializing clinic:", error);
+        // Log error securely without exposing details
+        logSystemError(error, "admin-initialization");
       }
     }
   }, [formData]);
@@ -327,21 +345,20 @@ function AdminDashboard() {
                 </div>
 
                 <div className="sm:col-span-full">
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium leading-6 text-gray-900"
-                  >
-                    Password <RequiredAsterisk />
+                  <label className="block text-sm font-medium leading-6 text-gray-900">
+                    Temporary Password
                   </label>
                   <div className="mt-2">
-                    <input
-                      type="password"
-                      name="password"
-                      id="password"
-                      autoComplete="current-password"
-                      className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 p-3"
-                      required
-                    />
+                    <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-md">
+                      A secure temporary password will be
+                      automatically generated and sent to
+                      the user's email address.
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      The user will receive the temporary
+                      password via email and must change it
+                      on first login.
+                    </p>
                   </div>
                 </div>
               </div>

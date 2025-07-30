@@ -267,3 +267,29 @@ export const initializeLoginTracking = async (email) => {
     throw error;
   }
 };
+
+/**
+ * Check if an account exists by looking for login attempts record
+ * If there's a record, the account has been used before (exists)
+ * @param {string} email - User's email address
+ * @returns {Promise<boolean>} - True if account exists, false otherwise
+ */
+export const checkAccountExists = async (email) => {
+  try {
+    const loginAttemptsRef = doc(
+      db,
+      "loginAttempts",
+      email
+    );
+    const loginAttemptsDoc = await getDoc(loginAttemptsRef);
+
+    // If there's a loginAttempts record, the account has been used before
+    return loginAttemptsDoc.exists();
+  } catch (error) {
+    console.error(
+      "Error checking if account exists:",
+      error
+    );
+    return false;
+  }
+};

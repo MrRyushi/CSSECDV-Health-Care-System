@@ -29,7 +29,9 @@ import ClinicVisits from "./pages/auth/staff/ClinicVisits";
 // Centralized Authorization
 import ProtectedRoute from "./components/ProtectedRoute";
 import { USER_ROLES } from "./utils/AuthorizationManager";
-import { LogViewer } from "./utils/LoggingSystem";
+
+// Error Pages
+import { NotFoundPage } from "./components/ErrorPages";
 
 const App = () => {
   return (
@@ -55,17 +57,6 @@ const App = () => {
                 requiredRole={USER_ROLES.ADMIN}
               >
                 <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            exact
-            path="/admin/logs"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.ADMIN}
-              >
-                <LogViewer />
               </ProtectedRoute>
             }
           />
@@ -190,6 +181,9 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Catch-all route for non-existent pages */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <Footer />
       </div>

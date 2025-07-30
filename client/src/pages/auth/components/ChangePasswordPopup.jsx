@@ -21,6 +21,7 @@ const ChangePasswordPopup = ({ onClose }) => {
   const [success, setSuccess] = useState("");
   const [isReauthenticating, setIsReauthenticating] =
     useState(true);
+
   const db = getFirestore();
 
   const PASSWORD_HISTORY_LIMIT = 5;

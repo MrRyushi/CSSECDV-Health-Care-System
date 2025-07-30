@@ -25,6 +25,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { generateTemporaryPassword } from "../../../../utils/PasswordGenerator";
 
 const searchIcon = (
   <FontAwesomeIcon icon={faMagnifyingGlass} />
@@ -67,8 +68,10 @@ function StaffList() {
     const firstName = e.target["first-name"].value;
     const lastName = e.target["last-name"].value;
     const email = e.target["email"].value;
-    const password = e.target["password"].value;
     const emailFormatted = formatEmail(email);
+
+    // Generate secure temporary password automatically
+    const tempPassword = generateTemporaryPassword(12);
 
     setFormData({
       ...formData,
@@ -76,12 +79,11 @@ function StaffList() {
       lastName,
       email,
       emailFormatted,
-      password,
+      password: tempPassword,
     });
   }
 
   useEffect(() => {
-    console.log(config.auth.currentUser.email);
     if (formData.email) {
       try {
         // EMAIL CREDENTIALS
@@ -95,7 +97,6 @@ function StaffList() {
             )
             .then(
               (result) => {
-                console.log("Email sent:", result.text);
                 alert("Email sent successfully!");
               },
               (error) => {
@@ -425,21 +426,21 @@ function StaffList() {
                       </div>
 
                       <div className="sm:col-span-full">
-                        <label
-                          htmlFor="password"
-                          className="block text-sm font-medium leading-6 text-white"
-                        >
-                          Password <RequiredAsterisk />
+                        <label className="block text-sm font-medium leading-6 text-white">
+                          Temporary Password
                         </label>
                         <div className="mt-2">
-                          <input
-                            type="password"
-                            name="password"
-                            id="password"
-                            autoComplete="current-password"
-                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 p-3"
-                            required
-                          />
+                          <div className="text-sm text-gray-300 bg-gray-800 p-3 rounded-md">
+                            A secure temporary password will
+                            be automatically generated and
+                            sent to the user's email
+                            address.
+                          </div>
+                          <p className="mt-1 text-xs text-gray-300">
+                            The user will receive the
+                            temporary password via email and
+                            must change it on first login.
+                          </p>
                         </div>
                       </div>
                     </div>

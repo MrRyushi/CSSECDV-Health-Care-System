@@ -21,6 +21,7 @@ import {
   getLockoutMessage,
   MAX_LOGIN_ATTEMPTS,
   initializeLoginTracking,
+  checkAccountExists,
 } from "../../../utils/loginAttempts";
 import { useSecurityLogging } from "../../../utils/LoggingSystem";
 import { handleError } from "../../../utils/ErrorHandler";
@@ -33,11 +34,20 @@ import { AuthContext } from "../../../AuthContext";
 import { Fragment, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import FirstTimeSetup from "../../../components/FirstTimeSetup";
+import SecurityQuestionsReset from "../../../components/SecurityQuestionsReset";
 
 function Login() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [lockoutMessage, setLockoutMessage] = useState("");
+  const [showFirstTimeSetup, setShowFirstTimeSetup] =
+    useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [
+    showSecurityQuestionsReset,
+    setShowSecurityQuestionsReset,
+  ] = useState(false);
 
   const cancelButtonRef = useRef(null);
   const [email, setEmail] = useState("");
@@ -55,12 +65,26 @@ function Login() {
     event.preventDefault();
 
     try {
-      await sendPasswordResetEmail(config.auth, email);
-      setResetSent(true);
-      alert("Email has been sent");
+      // Check if user has security questions set up
+      const userRef = doc(db, "userLogins", email);
+      const userDoc = await getDoc(userRef);
 
-      // Log successful password reset attempt
-      await logEvent("password_reset", "info", { email });
+      if (
+        userDoc.exists() &&
+        userDoc.data().securityQuestions
+      ) {
+        // User has security questions - show security questions reset
+        setShowSecurityQuestionsReset(true);
+        setOpen(false);
+      } else {
+        // Use email-based reset
+        await sendPasswordResetEmail(config.auth, email);
+        setResetSent(true);
+        alert("Email has been sent");
+
+        // Log successful password reset attempt
+        await logEvent("password_reset", "info", { email });
+      }
     } catch (error) {
       // Handle error securely and log failure
       const errorInfo = handleError(
@@ -74,6 +98,28 @@ function Login() {
 
   const navigate = useNavigate();
   const { setIsLoggedIn } = useContext(AuthContext);
+
+  const handleFirstTimeSetupComplete = () => {
+    setShowFirstTimeSetup(false);
+    setCurrentUser(null);
+
+    // Now proceed with normal login flow
+    const emailParts = email.split("@");
+    const domainParts = emailParts[1].split(".");
+    const accountType = domainParts[domainParts.length - 2];
+    user.accountType = accountType;
+    user.uid = currentUser.uid;
+    user.credentials = { user: currentUser };
+
+    setIsLoggedIn(true);
+
+    // Use centralized authorization to get default route
+    const { getDefaultRoute } = import(
+      "../../../utils/AuthorizationManager"
+    );
+    const defaultRoute = getDefaultRoute(accountType);
+    navigate(defaultRoute);
+  };
 
   const authenticate = async (event) => {
     event.preventDefault();
@@ -98,10 +144,14 @@ function Login() {
       const uid = userCredentials.user.uid;
       const userRef = doc(db, "userLogins", uid);
 
-      // Fetch previous login info
+      // Fetch previous login info and check first-time setup
       const userDoc = await getDoc(userRef);
+      let needsFirstTimeSetup = false;
+
       if (userDoc.exists()) {
         const data = userDoc.data();
+        needsFirstTimeSetup = !data.firstTimeSetupCompleted;
+
         let loginInfo = "";
 
         if (data.lastLogin) {
@@ -138,6 +188,16 @@ function Login() {
         if (loginInfo) {
           alert(loginInfo);
         }
+      } else {
+        // New user - needs first-time setup
+        needsFirstTimeSetup = true;
+      }
+
+      if (needsFirstTimeSetup) {
+        // Show first-time setup instead of proceeding to dashboard
+        setCurrentUser(userCredentials.user);
+        setShowFirstTimeSetup(true);
+        return;
       }
 
       // Update login time
@@ -182,28 +242,40 @@ function Login() {
       );
       await logSystemError(error, "login-attempt");
 
-      // For auth/invalid-login-credentials, the account exists but credentials are wrong
-      // Always apply lockout logic for this error
+      // For auth/invalid-login-credentials, we need to check if the account actually exists
+      // Firebase returns this error for both existing accounts with wrong passwords AND non-existent accounts
       if (error.code === "auth/invalid-login-credentials") {
         try {
-          // Check if user is locked out before recording failed attempt
-          const lockoutStatus = await checkLockoutStatus(
+          // Check if this account has been used before (exists)
+          const accountExists = await checkAccountExists(
             email
           );
 
-          if (lockoutStatus.isLocked) {
+          if (!accountExists) {
+            // This is a non-existent account - don't apply lockout logic
             setLockoutMessage(
-              `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
+              "Invalid username and/or password."
             );
           } else {
-            // Record failed attempt
-            await recordFailedAttempt(email);
-            const updatedLockoutStatus =
-              await checkLockoutStatus(email);
-            const message = getLockoutMessage(
-              updatedLockoutStatus
+            // Account exists - apply lockout logic
+            const lockoutStatus = await checkLockoutStatus(
+              email
             );
-            setLockoutMessage(message);
+
+            if (lockoutStatus.isLocked) {
+              setLockoutMessage(
+                `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
+              );
+            } else {
+              // Record failed attempt
+              await recordFailedAttempt(email);
+              const updatedLockoutStatus =
+                await checkLockoutStatus(email);
+              const message = getLockoutMessage(
+                updatedLockoutStatus
+              );
+              setLockoutMessage(message);
+            }
           }
         } catch (firestoreError) {
           // Log error securely without exposing details
@@ -216,52 +288,54 @@ function Login() {
         }
       } else if (
         error.code === "auth/user-not-found" ||
-        error.code === "auth/invalid-email"
+        error.code === "auth/invalid-email" ||
+        error.code === "auth/user-disabled" ||
+        error.code === "auth/operation-not-allowed" ||
+        error.code === "auth/too-many-requests"
       ) {
-        // Definitely non-existent account
+        // These errors indicate the account doesn't exist or can't be accessed
+        // Don't apply lockout logic for non-existent accounts
         setLockoutMessage(
           "Invalid username and/or password."
         );
       } else {
-        // Other errors - apply lockout logic
-        try {
-          // Check if user is locked out before recording failed attempt
-          const lockoutStatus = await checkLockoutStatus(
-            email
-          );
-
-          if (lockoutStatus.isLocked) {
-            setLockoutMessage(
-              `Account is locked due to too many failed attempts. Please try again in ${lockoutStatus.remainingMinutes} minutes.`
-            );
-          } else {
-            // Record failed attempt
-            await recordFailedAttempt(email);
-
-            // Check lockout status after recording the attempt
-            const updatedLockoutStatus =
-              await checkLockoutStatus(email);
-
-            // Get user-friendly message
-            const message = getLockoutMessage(
-              updatedLockoutStatus
-            );
-            setLockoutMessage(message);
-          }
-        } catch (firestoreError) {
-          // Log error securely without exposing details
-          console.error(
-            "Firestore operation failed during authentication"
-          );
-          setLockoutMessage(
-            "Invalid username and/or password."
-          );
-        }
+        // For other errors (like network issues, etc.), don't apply lockout logic
+        // Just show generic error message
+        setLockoutMessage(
+          "Invalid username and/or password."
+        );
       }
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show first-time setup if needed
+  if (showFirstTimeSetup && currentUser) {
+    return (
+      <FirstTimeSetup
+        user={currentUser}
+        onComplete={handleFirstTimeSetupComplete}
+      />
+    );
+  }
+
+  // Show security questions reset if needed
+  if (showSecurityQuestionsReset) {
+    return (
+      <SecurityQuestionsReset
+        email={email}
+        onSuccess={() => {
+          setShowSecurityQuestionsReset(false);
+          // Clear any existing session and redirect to login
+          window.location.reload();
+        }}
+        onCancel={() =>
+          setShowSecurityQuestionsReset(false)
+        }
+      />
+    );
+  }
 
   return (
     <div

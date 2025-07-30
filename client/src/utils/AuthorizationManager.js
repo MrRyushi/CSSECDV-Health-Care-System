@@ -134,12 +134,6 @@ export const useAuthorization = () => {
             setUser(authUser);
             setUserRole(role);
             setError(null);
-
-            // Log successful authorization
-            console.log("User authorized successfully:", {
-              email: authUser.email,
-              role,
-            });
           } else {
             setUser(null);
             setUserRole(null);

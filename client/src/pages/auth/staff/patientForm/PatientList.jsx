@@ -952,7 +952,6 @@ function PatientList() {
   };
 
   const handleRemoveClickVaccine = () => {
-    console.log("HELLO WORLD");
     if (vaccinationList.length > 1) {
       setVaccinationList((prevList) => [
         ...prevList.slice(0, -1),
@@ -1264,7 +1263,6 @@ function PatientList() {
     setPersonalList(Object.values(groupedDict));
 
     setShowForm2(true);
-    console.log(`Clicked on element with key: ${key}`);
   };
 
   // Clear Key Data

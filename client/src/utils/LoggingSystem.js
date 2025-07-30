@@ -1,6 +1,12 @@
 /**
  * Comprehensive Logging System
  * Logs security events and restricts access to administrators only
+ *
+ * CONSOLE LOGGING (Development Only):
+ * - All security events are automatically logged to console in development mode
+ * - To view all logs in console, run: viewLogsInConsole() in browser console
+ * - Logs are color-coded by severity level for easy identification
+ * - No admin dashboard needed - everything is visible in browser console
  */
 
 import { db } from "../firebase/Firebase";
@@ -17,7 +23,6 @@ import {
 } from "firebase/firestore";
 import { useAuthorization } from "./AuthorizationManager";
 import { USER_ROLES } from "./AuthorizationManager";
-import { useState, useEffect } from "react";
 
 // Log event types
 export const LOG_EVENTS = {
@@ -158,14 +163,38 @@ class SecurityLogger {
         logEntry
       );
 
-      // Also log to console for development
-      console.log("Security Log:", {
-        timestamp: logEntry.timestamp,
-        event: logEntry.event,
-        severity: logEntry.severity,
-        userId: logEntry.userId,
-        userRole: logEntry.userRole,
-      });
+      // Enhanced console logging for development
+      if (process.env.NODE_ENV === "development") {
+        const logStyle = {
+          critical: "color: #dc2626; font-weight: bold;",
+          error: "color: #ea580c; font-weight: bold;",
+          warning: "color: #d97706; font-weight: bold;",
+          info: "color: #2563eb; font-weight: bold;",
+          debug: "color: #059669; font-weight: bold;",
+        };
+
+        console.group(
+          `🔒 Security Log - ${logEntry.event}`
+        );
+        console.log(
+          `%c${logEntry.severity.toUpperCase()}`,
+          logStyle[logEntry.severity] || "color: #6b7280;"
+        );
+        console.log(
+          "📅 Timestamp:",
+          new Date(logEntry.timestamp).toLocaleString()
+        );
+        console.log(
+          "👤 User ID:",
+          logEntry.userId || "N/A"
+        );
+        console.log(
+          "🎭 User Role:",
+          logEntry.userRole || "N/A"
+        );
+        console.log("📋 Details:", logEntry.details);
+        console.groupEnd();
+      }
     } catch (error) {
       console.error("Failed to log security event:", error);
     }
@@ -296,6 +325,57 @@ export const securityLogger = new SecurityLogger();
 /**
  * Hook for logging with user context
  */
+// Development helper function to view logs in console
+export const viewLogsInConsole = async () => {
+  if (process.env.NODE_ENV === "development") {
+    try {
+      const logsQuery = query(
+        collection(db, "securityLogs"),
+        orderBy("timestamp", "desc"),
+        limit(50)
+      );
+
+      const querySnapshot = await getDocs(logsQuery);
+      const logsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      console.group("🔍 Security Logs (Last 50)");
+      logsData.forEach((log, index) => {
+        const logStyle = {
+          critical: "color: #dc2626; font-weight: bold;",
+          error: "color: #ea580c; font-weight: bold;",
+          warning: "color: #d97706; font-weight: bold;",
+          info: "color: #2563eb; font-weight: bold;",
+          debug: "color: #059669; font-weight: bold;",
+        };
+
+        console.group(`#${index + 1} - ${log.event}`);
+        console.log(
+          `%c${log.severity.toUpperCase()}`,
+          logStyle[log.severity] || "color: #6b7280;"
+        );
+        console.log(
+          "📅 Timestamp:",
+          new Date(log.timestamp).toLocaleString()
+        );
+        console.log("👤 User ID:", log.userId || "N/A");
+        console.log("🎭 User Role:", log.userRole || "N/A");
+        console.log("📋 Details:", log.details);
+        console.groupEnd();
+      });
+      console.groupEnd();
+    } catch (error) {
+      console.error("Failed to fetch logs:", error);
+    }
+  } else {
+    console.log(
+      "viewLogsInConsole() is only available in development mode"
+    );
+  }
+};
+
 export const useSecurityLogging = () => {
   const { user, userRole } = useAuthorization();
 
@@ -376,135 +456,4 @@ export const useSecurityLogging = () => {
     logSuspiciousActivity,
     logSystemError,
   };
-};
-
-/**
- * Admin-only log viewer component
- */
-export const LogViewer = () => {
-  const { userRole } = useAuthorization();
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const fetchLogs = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const logsQuery = query(
-        collection(db, "securityLogs"),
-        orderBy("timestamp", "desc"),
-        limit(100)
-      );
-
-      const querySnapshot = await getDocs(logsQuery);
-      const logsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      setLogs(logsData);
-    } catch (err) {
-      setError("Failed to fetch logs");
-      console.error("Error fetching logs:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Only fetch logs if user is admin
-    if (userRole === USER_ROLES.ADMIN) {
-      fetchLogs();
-    }
-  }, [userRole]);
-
-  // Only allow admins to view logs
-  if (userRole !== USER_ROLES.ADMIN) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-red-600 mb-2">
-            Access Denied
-          </h2>
-          <p className="text-gray-600">
-            Only administrators can view security logs.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return <div>Loading logs...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
-
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">
-        Security Logs
-      </h1>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-300">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 border">
-                Timestamp
-              </th>
-              <th className="px-4 py-2 border">Event</th>
-              <th className="px-4 py-2 border">Severity</th>
-              <th className="px-4 py-2 border">User ID</th>
-              <th className="px-4 py-2 border">
-                User Role
-              </th>
-              <th className="px-4 py-2 border">Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => (
-              <tr key={log.id}>
-                <td className="px-4 py-2 border">
-                  {new Date(log.timestamp).toLocaleString()}
-                </td>
-                <td className="px-4 py-2 border">
-                  {log.event}
-                </td>
-                <td className="px-4 py-2 border">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      log.severity === "critical"
-                        ? "bg-red-100 text-red-800"
-                        : log.severity === "error"
-                        ? "bg-orange-100 text-orange-800"
-                        : log.severity === "warning"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {log.severity}
-                  </span>
-                </td>
-                <td className="px-4 py-2 border">
-                  {log.userId || "N/A"}
-                </td>
-                <td className="px-4 py-2 border">
-                  {log.userRole || "N/A"}
-                </td>
-                <td className="px-4 py-2 border">
-                  <pre className="text-xs">
-                    {JSON.stringify(log.details, null, 2)}
-                  </pre>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 };

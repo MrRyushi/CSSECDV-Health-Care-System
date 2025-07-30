@@ -61,7 +61,6 @@ function Information() {
       )
       .then(
         (result) => {
-          console.log("Email sent:", result.text);
           alert("Email sent successfully!");
         },
         (error) => {
