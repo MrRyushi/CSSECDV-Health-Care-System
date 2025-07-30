@@ -111,22 +111,8 @@ export const recordFailedAttempt = async (email) => {
           lastFailedAttempt: Date.now(),
         });
 
-        // Also update user document with failed attempt
-        try {
-          const userRef = doc(db, "userLogins", email);
-          await setDoc(
-            userRef,
-            {
-              lastFailedAttempt: new Date(),
-            },
-            { merge: true }
-          );
-        } catch (error) {
-          console.error(
-            "Error updating user failed attempt:",
-            error
-          );
-        }
+        // Note: We can't update userLogins with email as ID since we don't have UID
+        // The failed attempt is already recorded in loginAttempts collection
 
         return {
           isLocked: false,
@@ -141,22 +127,8 @@ export const recordFailedAttempt = async (email) => {
         lastFailedAttempt: Date.now(),
       });
 
-      // Also update user document with failed attempt
-      try {
-        const userRef = doc(db, "userLogins", email);
-        await setDoc(
-          userRef,
-          {
-            lastFailedAttempt: new Date(),
-          },
-          { merge: true }
-        );
-      } catch (error) {
-        console.error(
-          "Error updating user failed attempt:",
-          error
-        );
-      }
+      // Note: We can't update userLogins with email as ID since we don't have UID
+      // The failed attempt is already recorded in loginAttempts collection
 
       return {
         isLocked: false,

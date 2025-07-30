@@ -110,10 +110,29 @@ function Login() {
           ).toLocaleString()}\n`;
         }
 
-        if (data.lastFailedAttempt) {
-          loginInfo += `Last failed attempt: ${new Date(
-            data.lastFailedAttempt.toDate()
-          ).toLocaleString()}`;
+        // Get failed attempts from loginAttempts collection
+        try {
+          const loginAttemptsRef = doc(
+            db,
+            "loginAttempts",
+            email
+          );
+          const loginAttemptsDoc = await getDoc(
+            loginAttemptsRef
+          );
+          if (loginAttemptsDoc.exists()) {
+            const attemptsData = loginAttemptsDoc.data();
+            if (attemptsData.lastFailedAttempt) {
+              loginInfo += `Last failed attempt: ${new Date(
+                attemptsData.lastFailedAttempt.toDate()
+              ).toLocaleString()}`;
+            }
+          }
+        } catch (error) {
+          console.error(
+            "Error fetching failed attempts:",
+            error
+          );
         }
 
         if (loginInfo) {
