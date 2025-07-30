@@ -111,6 +111,23 @@ export const recordFailedAttempt = async (email) => {
           lastFailedAttempt: Date.now(),
         });
 
+        // Also update user document with failed attempt
+        try {
+          const userRef = doc(db, "userLogins", email);
+          await setDoc(
+            userRef,
+            {
+              lastFailedAttempt: new Date(),
+            },
+            { merge: true }
+          );
+        } catch (error) {
+          console.error(
+            "Error updating user failed attempt:",
+            error
+          );
+        }
+
         return {
           isLocked: false,
           attempts: newAttempts,
@@ -123,6 +140,23 @@ export const recordFailedAttempt = async (email) => {
         isLocked: false,
         lastFailedAttempt: Date.now(),
       });
+
+      // Also update user document with failed attempt
+      try {
+        const userRef = doc(db, "userLogins", email);
+        await setDoc(
+          userRef,
+          {
+            lastFailedAttempt: new Date(),
+          },
+          { merge: true }
+        );
+      } catch (error) {
+        console.error(
+          "Error updating user failed attempt:",
+          error
+        );
+      }
 
       return {
         isLocked: false,

@@ -102,12 +102,22 @@ function Login() {
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const data = userDoc.data();
+        let loginInfo = "";
+
         if (data.lastLogin) {
-          alert(
-            `Last login was on: ${new Date(
-              data.lastLogin.toDate()
-            ).toLocaleString()}`
-          );
+          loginInfo += `Last successful login: ${new Date(
+            data.lastLogin.toDate()
+          ).toLocaleString()}\n`;
+        }
+
+        if (data.lastFailedAttempt) {
+          loginInfo += `Last failed attempt: ${new Date(
+            data.lastFailedAttempt.toDate()
+          ).toLocaleString()}`;
+        }
+
+        if (loginInfo) {
+          alert(loginInfo);
         }
       }
 
