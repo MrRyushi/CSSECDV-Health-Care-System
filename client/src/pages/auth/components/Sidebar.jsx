@@ -26,8 +26,7 @@ const logout = (
 );
 
 function Sidebar(props) {
-  const { isLoggedIn, setIsLoggedIn } =
-    useContext(AuthContext);
+  const { isLoggedIn } = useContext(AuthContext);
   const selected = props.selected;
   const name = props.adminName;
   const [showPopup, setShowPopup] = useState(false);
@@ -35,8 +34,8 @@ function Sidebar(props) {
   function logOut() {
     signOut(config.auth)
       .then(() => {
+        // AuthContext will automatically handle logout state through Firebase
         navigate("/login");
-        window.location.reload();
       })
       .catch((error) => {
         // An error happened.

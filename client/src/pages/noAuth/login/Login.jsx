@@ -27,7 +27,11 @@ import { useSecurityLogging } from "../../../utils/LoggingSystem";
 import { handleError } from "../../../utils/ErrorHandler";
 
 // Import React dependencies
-import React, { useContext, useState } from "react";
+import React, {
+  useContext,
+  useState,
+  useEffect,
+} from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../../../AuthContext";
 
@@ -60,6 +64,29 @@ function Login() {
     logSystemError,
     logEvent,
   } = useSecurityLogging();
+
+  // Get authentication state from context
+  const { isLoggedIn, setIsInSetup } =
+    useContext(AuthContext);
+
+  // Reset setup state when user logs out
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setShowFirstTimeSetup(false);
+      setCurrentUser(null);
+      setShowSecurityQuestionsReset(false);
+      setIsInSetup(false); // Reset setup state in context
+    }
+  }, [isLoggedIn, setIsInSetup]);
+
+  // Set setup state when entering first-time setup
+  useEffect(() => {
+    if (showFirstTimeSetup) {
+      setIsInSetup(true);
+    } else {
+      setIsInSetup(false);
+    }
+  }, [showFirstTimeSetup, setIsInSetup]);
 
   const handleReset = async (event) => {
     event.preventDefault();
@@ -97,7 +124,7 @@ function Login() {
   };
 
   const navigate = useNavigate();
-  const { setIsLoggedIn } = useContext(AuthContext);
+  // AuthContext automatically handles login state through Firebase
 
   const handleFirstTimeSetupComplete = () => {
     setShowFirstTimeSetup(false);
@@ -111,8 +138,7 @@ function Login() {
     user.uid = currentUser.uid;
     user.credentials = { user: currentUser };
 
-    setIsLoggedIn(true);
-
+    // AuthContext will automatically handle login state through Firebase
     // Use centralized authorization to get default route
     const { getDefaultRoute } = import(
       "../../../utils/AuthorizationManager"
@@ -218,8 +244,7 @@ function Login() {
       user.uid = userCredentials.user.uid;
       user.credentials = userCredentials;
 
-      setIsLoggedIn(true);
-
+      // AuthContext will automatically handle login state through Firebase
       // Use centralized authorization to get default route
       const { getDefaultRoute } = await import(
         "../../../utils/AuthorizationManager"

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Routes, Route } from "react-router-dom";
 
 // Components
@@ -8,7 +8,7 @@ import Information from "./pages/noAuth/information/Information";
 import QA from "./pages/noAuth/qa/QA";
 import Login from "./pages/noAuth/login/Login";
 import Pdashboard from "./pages/auth/patient/Pdashboard";
-import { AuthProvider } from "./AuthContext";
+import { AuthProvider, AuthContext } from "./AuthContext";
 import Footer from "./pages/noAuth/components/Footer";
 import Test from "./pages/auth/patient/Test";
 
@@ -33,160 +33,145 @@ import { USER_ROLES } from "./utils/AuthorizationManager";
 // Error Pages
 import { NotFoundPage } from "./components/ErrorPages";
 
+// Component to conditionally render navbar
+const AppContent = () => {
+  const { isLoggedIn, isInSetup } = useContext(AuthContext);
+
+  // Hide navbar when user is in first-time setup process
+  const shouldShowNavbar = !isInSetup;
+
+  return (
+    <div className="h-max w-screen">
+      {shouldShowNavbar && <Navbar />}
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/aboutus" element={<Information />} />
+        <Route path="/questions" element={<QA />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/policies" element={<Policy />} />
+        <Route path="/tac" element={<Terms />} />
+        {/* SUPER ADMIN ROUTES */}
+        <Route
+          exact
+          path="/admin"
+          element={
+            <ProtectedRoute requiredRole={USER_ROLES.ADMIN}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* CLINIC ADMIN ROUTES */}
+        <Route
+          exact
+          path="/clinic-admin"
+          element={
+            <ProtectedRoute
+              requiredRole={USER_ROLES.CLINIC_ADMIN}
+            >
+              <ClinicAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          exact
+          path="/clinic-admin/stafflist"
+          element={
+            <ProtectedRoute
+              requiredRole={USER_ROLES.CLINIC_ADMIN}
+            >
+              <StaffList />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* STAFF ROUTES */}
+        <Route
+          exact
+          path="/clinic-staff"
+          element={
+            <ProtectedRoute requiredRole={USER_ROLES.STAFF}>
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          exact
+          path="/clinic-staff/patientlist"
+          element={
+            <ProtectedRoute requiredRole={USER_ROLES.STAFF}>
+              <PatientList />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          exact
+          path="/clinic-staff/clinic-visits"
+          element={
+            <ProtectedRoute requiredRole={USER_ROLES.STAFF}>
+              <ClinicVisits />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* PATIENT ROUTES */}
+        <Route
+          exact
+          path="/patient/personal-information"
+          element={
+            <ProtectedRoute
+              requiredRole={USER_ROLES.PATIENT}
+            >
+              <PersonalInformation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          exact
+          path="/patient/record-diagnoses"
+          element={
+            <ProtectedRoute
+              requiredRole={USER_ROLES.PATIENT}
+            >
+              <RecordDiagnoses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          exact
+          path="/patient/PersonalInfo"
+          element={
+            <ProtectedRoute
+              requiredRole={USER_ROLES.PATIENT}
+            >
+              <PersonalInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          exact
+          path="/patient"
+          element={
+            <ProtectedRoute
+              requiredRole={USER_ROLES.PATIENT}
+            >
+              <Pdashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 Route */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </div>
+  );
+};
+
 const App = () => {
   return (
     <AuthProvider>
-      <div className="h-max w-screen">
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route
-            path="/aboutus"
-            element={<Information />}
-          />
-          <Route path="/questions" element={<QA />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/policies" element={<Policy />} />
-          <Route path="/tac" element={<Terms />} />
-          {/* SUPER ADMIN ROUTES */}
-          <Route
-            exact
-            path="/admin"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.ADMIN}
-              >
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* CLINIC ADMIN ROUTES */}
-          <Route
-            exact
-            path="/clinic-admin"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.CLINIC_ADMIN}
-              >
-                <ClinicAdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            exact
-            path="/clinic-admin/stafflist"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.CLINIC_ADMIN}
-              >
-                <StaffList />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* STAFF ROUTES */}
-          <Route
-            exact
-            path="/clinic-staff"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.STAFF}
-              >
-                <StaffDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            exact
-            path="/clinic-staff/patientlist"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.STAFF}
-              >
-                <PatientList />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            exact
-            path="/clinic-staff/clinic-visits"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.STAFF}
-              >
-                <ClinicVisits />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* PATIENT ROUTES */}
-          <Route
-            exact
-            path="/patient/personal-information"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.PATIENT}
-              >
-                <PersonalInformation />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            exact
-            path="/patient/record-diagnoses"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.PATIENT}
-              >
-                <RecordDiagnoses />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            exact
-            path="/patient"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.PATIENT}
-              >
-                <Pdashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            exact
-            path="/patient/PersonalInfo"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.PATIENT}
-              >
-                <PersonalInfo />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            exact
-            path="/test"
-            element={
-              <ProtectedRoute
-                requiredRole={USER_ROLES.PATIENT}
-              >
-                <Test />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Catch-all route for non-existent pages */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-        <Footer />
-      </div>
+      <AppContent />
     </AuthProvider>
   );
 };

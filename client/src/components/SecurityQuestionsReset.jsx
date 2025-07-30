@@ -35,6 +35,58 @@ const SecurityQuestionsReset = ({
 
   const { logEvent, logSystemError } = useSecurityLogging();
 
+  // Prevent back button and navigation during password reset
+  useEffect(() => {
+    // Push current state to prevent back navigation
+    window.history.pushState(
+      null,
+      null,
+      window.location.href
+    );
+
+    // Handle back button attempts
+    const handlePopState = (event) => {
+      // Prevent going back
+      window.history.pushState(
+        null,
+        null,
+        window.location.href
+      );
+      // Show warning to user
+      alert(
+        "⚠️ Password Reset Required: You must complete the password reset process before proceeding. Please continue with the reset process."
+      );
+    };
+
+    // Handle page refresh/close attempts
+    const handleBeforeUnload = (event) => {
+      const message =
+        "⚠️ Password Reset Required: You must complete the password reset. Are you sure you want to leave?";
+      event.preventDefault();
+      event.returnValue = message;
+      return message;
+    };
+
+    // Add event listeners
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener(
+      "beforeunload",
+      handleBeforeUnload
+    );
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        handlePopState
+      );
+      window.removeEventListener(
+        "beforeunload",
+        handleBeforeUnload
+      );
+    };
+  }, []);
+
   // Step 1: Verify email and get user's security questions
   const handleEmailSubmit = async (e) => {
     e.preventDefault();

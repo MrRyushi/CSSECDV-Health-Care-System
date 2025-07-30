@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Navigate } from "react-router-dom";
 import {
   useAuthorization,
   USER_ROLES,
 } from "../utils/AuthorizationManager";
 import { useSecurityLogging } from "../utils/LoggingSystem";
+import { AuthContext } from "../AuthContext";
 
 /**
  * Centralized Protected Route Component
@@ -25,6 +26,7 @@ const ProtectedRoute = ({
     error,
   } = useAuthorization();
   const { logAccessControlFailure } = useSecurityLogging();
+  const { isInSetup } = useContext(AuthContext);
 
   // Show loading while checking authentication
   if (loading) {
@@ -56,6 +58,18 @@ const ProtectedRoute = ({
       requiredRole
     );
 
+    return <Navigate to={fallbackRoute} replace />;
+  }
+
+  // User is authenticated but in setup mode - redirect to login to complete setup
+  if (isInSetup) {
+    // Log setup bypass attempt
+    logAccessControlFailure(
+      window.location.pathname,
+      "setup_bypass_attempt"
+    );
+
+    // Redirect to login where setup will be shown
     return <Navigate to={fallbackRoute} replace />;
   }
 

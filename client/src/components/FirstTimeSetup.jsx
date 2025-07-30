@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+} from "react";
 import {
   getRandomSecurityQuestions,
   validateSecurityAnswer,
@@ -9,6 +13,7 @@ import { db } from "../firebase/Firebase";
 import { useSecurityLogging } from "../utils/LoggingSystem";
 import { updatePassword } from "firebase/auth";
 import { config } from "../firebase/Firebase";
+import { AuthContext } from "../AuthContext";
 
 /**
  * First Time Setup Component
@@ -29,11 +34,64 @@ const FirstTimeSetup = ({ user, onComplete }) => {
   const [loading, setLoading] = useState(false);
 
   const { logEvent, logSystemError } = useSecurityLogging();
+  const { setIsInSetup } = useContext(AuthContext);
 
   useEffect(() => {
     // Generate security questions for the user
     const questions = getRandomSecurityQuestions(3);
     setSecurityQuestions(questions);
+  }, []);
+
+  // Prevent back button and navigation during setup
+  useEffect(() => {
+    // Push current state to prevent back navigation
+    window.history.pushState(
+      null,
+      null,
+      window.location.href
+    );
+
+    // Handle back button attempts
+    const handlePopState = (event) => {
+      // Prevent going back
+      window.history.pushState(
+        null,
+        null,
+        window.location.href
+      );
+      // Show warning to user
+      alert(
+        "⚠️ Setup Required: You must complete the account setup before proceeding. Please continue with the setup process."
+      );
+    };
+
+    // Handle page refresh/close attempts
+    const handleBeforeUnload = (event) => {
+      const message =
+        "⚠️ Setup Required: You must complete the account setup. Are you sure you want to leave?";
+      event.preventDefault();
+      event.returnValue = message;
+      return message;
+    };
+
+    // Add event listeners
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener(
+      "beforeunload",
+      handleBeforeUnload
+    );
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        handlePopState
+      );
+      window.removeEventListener(
+        "beforeunload",
+        handleBeforeUnload
+      );
+    };
   }, []);
 
   // Step 1: Change password
@@ -147,6 +205,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
 
       // Complete setup
       onComplete();
+      setIsInSetup(false); // Set isInSetup to false after setup is completed
     } catch (error) {
       setError(
         "Failed to save security questions. Please try again."
@@ -165,12 +224,30 @@ const FirstTimeSetup = ({ user, onComplete }) => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900">
-              Welcome! Let's Set Up Your Account
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+              <svg
+                className="h-6 w-6 text-blue-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+              Required Setup
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              For security reasons, please change your
-              temporary password
+              You must complete this setup before accessing
+              the system
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              Step 1 of 2: Change Your Password
             </p>
           </div>
 
@@ -274,12 +351,30 @@ const FirstTimeSetup = ({ user, onComplete }) => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900">
-              Set Up Security Questions
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+              <svg
+                className="h-6 w-6 text-blue-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+              Security Questions
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              These will be used for password reset if
-              needed
+              Set up security questions for password
+              recovery
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              Step 2 of 2: Security Questions Setup
             </p>
           </div>
 
