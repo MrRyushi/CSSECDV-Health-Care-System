@@ -4,6 +4,7 @@ import {
   useAuthorization,
   USER_ROLES,
 } from "../utils/AuthorizationManager";
+import { useSecurityLogging } from "../utils/LoggingSystem";
 
 /**
  * Centralized Protected Route Component
@@ -23,6 +24,7 @@ const ProtectedRoute = ({
     getDefaultRedirect,
     error,
   } = useAuthorization();
+  const { logAccessControlFailure } = useSecurityLogging();
 
   // Show loading while checking authentication
   if (loading) {
@@ -37,12 +39,10 @@ const ProtectedRoute = ({
   if (error) {
     console.error("Access control failure:", error);
     // Log access control failure for security monitoring
-    console.log("Access control failure logged:", {
-      timestamp: new Date().toISOString(),
-      error: error,
-      userEmail: user?.email || "unknown",
-      attemptedRole: requiredRole,
-    });
+    logAccessControlFailure(
+      window.location.pathname,
+      requiredRole
+    );
 
     // Redirect to login without exposing error details
     return <Navigate to={fallbackRoute} replace />;
@@ -51,12 +51,10 @@ const ProtectedRoute = ({
   // User is not authenticated - redirect to login
   if (!isAuthenticated) {
     // Log unauthorized access attempt
-    console.log("Unauthorized access attempt:", {
-      timestamp: new Date().toISOString(),
-      userEmail: user?.email || "not authenticated",
-      attemptedRoute: window.location.pathname,
-      requiredRole: requiredRole,
-    });
+    logAccessControlFailure(
+      window.location.pathname,
+      requiredRole
+    );
 
     return <Navigate to={fallbackRoute} replace />;
   }
@@ -69,15 +67,9 @@ const ProtectedRoute = ({
   // Check if user has the required role
   if (userRole !== requiredRole) {
     // Log access control failure
-    console.log(
-      "Access control failure - insufficient privileges:",
-      {
-        timestamp: new Date().toISOString(),
-        userEmail: user?.email,
-        userRole: userRole,
-        requiredRole: requiredRole,
-        attemptedRoute: window.location.pathname,
-      }
+    logAccessControlFailure(
+      window.location.pathname,
+      requiredRole
     );
 
     // User doesn't have the required role - redirect to their default route

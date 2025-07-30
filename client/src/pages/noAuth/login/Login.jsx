@@ -22,6 +22,8 @@ import {
   MAX_LOGIN_ATTEMPTS,
   initializeLoginTracking,
 } from "../../../utils/loginAttempts";
+import { useSecurityLogging } from "../../../utils/LoggingSystem";
+import { handleError } from "../../../utils/ErrorHandler";
 
 // Import React dependencies
 import React, { useContext, useState } from "react";
@@ -42,6 +44,13 @@ function Login() {
   const [password, setPassword] = useState("");
   const [resetSent, setResetSent] = useState(false);
 
+  // Initialize security logging
+  const {
+    logAuthenticationAttempt,
+    logSystemError,
+    logEvent,
+  } = useSecurityLogging();
+
   const handleReset = async (event) => {
     event.preventDefault();
 
@@ -49,12 +58,17 @@ function Login() {
       await sendPasswordResetEmail(config.auth, email);
       setResetSent(true);
       alert("Email has been sent");
+
+      // Log successful password reset attempt
+      await logEvent("password_reset", "info", { email });
     } catch (error) {
-      // Log error securely without exposing details
-      console.error("Password reset failed");
-      alert(
-        "If the email exists, a password reset link has been sent."
+      // Handle error securely and log failure
+      const errorInfo = handleError(
+        error,
+        "password-reset"
       );
+      await logSystemError(error, "password-reset");
+      alert(errorInfo.message);
     }
   };
 
@@ -123,12 +137,21 @@ function Login() {
       );
       const defaultRoute = getDefaultRoute(accountType);
       navigate(defaultRoute);
+
+      // Log successful authentication
+      await logAuthenticationAttempt(email, true);
     } catch (error) {
-      // Log error securely without exposing details to user
-      console.error(
-        "Authentication failed for email:",
-        email
+      // Handle error securely and log authentication failure
+      const errorInfo = handleError(
+        error,
+        "authentication"
       );
+      await logAuthenticationAttempt(
+        email,
+        false,
+        errorInfo.message
+      );
+      await logSystemError(error, "login-attempt");
 
       // For auth/invalid-login-credentials, we need to check if the account exists
       // by trying to fetch user data from Firestore or checking if there's a loginAttempts record

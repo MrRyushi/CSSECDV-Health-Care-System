@@ -456,14 +456,25 @@ export const logValidationFailure = (
   value,
   message
 ) => {
-  console.log("Input validation failure:", {
-    timestamp: new Date().toISOString(),
-    field: fieldName,
-    value:
-      typeof value === "string"
-        ? value.substring(0, 10) + "..."
-        : "non-string",
-    message: message,
-    userAgent: navigator.userAgent,
-  });
+  // Import security logger dynamically to avoid circular dependencies
+  import("./LoggingSystem")
+    .then(({ securityLogger }) => {
+      securityLogger.logValidationFailure(
+        fieldName,
+        message
+      );
+    })
+    .catch(() => {
+      // Fallback to console logging if security logger is not available
+      console.log("Input validation failure:", {
+        timestamp: new Date().toISOString(),
+        field: fieldName,
+        value:
+          typeof value === "string"
+            ? value.substring(0, 10) + "..."
+            : "non-string",
+        message: message,
+        userAgent: navigator.userAgent,
+      });
+    });
 };
