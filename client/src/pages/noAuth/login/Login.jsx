@@ -50,7 +50,11 @@ function Login() {
       setResetSent(true);
       alert("Email has been sent");
     } catch (error) {
-      console.error(error.message);
+      // Log error securely without exposing details
+      console.error("Password reset failed");
+      alert(
+        "If the email exists, a password reset link has been sent."
+      );
     }
   };
 
@@ -113,25 +117,18 @@ function Login() {
 
       setIsLoggedIn(true);
 
-      if (user.accountType === "clinic") {
-        navigate("/clinic");
-      } else if (user.accountType === "patient") {
-        navigate("/patient");
-      } else if (user.accountType === "locator") {
-        navigate("/locator");
-      } else if (user.accountType === "admin") {
-        navigate("/admin");
-      } else if (user.accountType === "cad") {
-        navigate("/clinic-admin");
-      } else if (user.accountType === "staff") {
-        navigate("/clinic-staff");
-      } else {
-        navigate("/patient");
-      }
+      // Use centralized authorization to get default route
+      const { getDefaultRoute } = await import(
+        "../../../utils/AuthorizationManager"
+      );
+      const defaultRoute = getDefaultRoute(accountType);
+      navigate(defaultRoute);
     } catch (error) {
-      // Debug: Log the actual error to see what Firebase returns
-      console.log("Firebase error code:", error.code);
-      console.log("Firebase error message:", error.message);
+      // Log error securely without exposing details to user
+      console.error(
+        "Authentication failed for email:",
+        email
+      );
 
       // For auth/invalid-login-credentials, we need to check if the account exists
       // by trying to fetch user data from Firestore or checking if there's a loginAttempts record
@@ -165,7 +162,10 @@ function Login() {
             );
           }
         } catch (firestoreError) {
-          console.error("Firestore error:", firestoreError);
+          // Log error securely without exposing details
+          console.error(
+            "Firestore operation failed during authentication"
+          );
           setLockoutMessage(
             "Invalid username and/or password."
           );
@@ -205,14 +205,15 @@ function Login() {
             setLockoutMessage(message);
           }
         } catch (firestoreError) {
-          console.error("Firestore error:", firestoreError);
+          // Log error securely without exposing details
+          console.error(
+            "Firestore operation failed during authentication"
+          );
           setLockoutMessage(
             "Invalid username and/or password."
           );
         }
       }
-
-      console.log(error);
     } finally {
       setIsLoading(false);
     }

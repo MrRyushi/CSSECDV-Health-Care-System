@@ -573,24 +573,26 @@ function StaffDashboard() {
                   // ...
                 })
                 .catch((error) => {
-                  console.error(
-                    "Error creating user:",
-                    error.message
-                  );
-                  const errorCode = error.code;
-                  const errorMessage = error.message;
-                  // ..
-                  console.log(
-                    errorCode + " | " + errorMessage
-                  );
+                  // Log error securely without exposing details
+                  console.error("User creation failed");
+
                   if (
-                    errorCode == "auth/email-already-in-use"
+                    error.code ==
+                    "auth/email-already-in-use"
                   ) {
-                    alert("Invalid email address");
+                    alert(
+                      "Email address is already in use"
+                    );
                   } else if (
-                    errorCode == "auth/weak-password"
+                    error.code == "auth/weak-password"
                   ) {
-                    alert("Password is too weak");
+                    alert(
+                      "Password does not meet security requirements"
+                    );
+                  } else {
+                    alert(
+                      "Failed to create user account. Please try again."
+                    );
                   }
                 });
             } else {

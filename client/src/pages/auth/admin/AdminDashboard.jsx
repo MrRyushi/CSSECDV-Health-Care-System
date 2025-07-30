@@ -13,6 +13,10 @@ import RequiredAsterisk from "./components/asterisk";
 import emailjs, { send } from "emailjs-com";
 import { useState, useEffect } from "react";
 import ChangePasswordPopup from "../components/ChangePasswordPopup";
+import {
+  validateEmail as validateEmailField,
+  validatePassword,
+} from "../../../utils/DataValidation";
 
 function AdminDashboard() {
   const [showPopup, setShowPopup] = useState(false);
@@ -41,19 +45,16 @@ function AdminDashboard() {
   }
 
   function validateEmail(email) {
-    // Split the email address into the local part and the domain part
-    const [localPart, domain] = email.split("@");
-    if (domain != "gmail.com") {
-      return false;
-    }
-
-    return true;
+    const validation = validateEmailField(
+      email,
+      "gmail.com"
+    );
+    return validation.success;
   }
 
   function isPasswordComplex(password) {
-    const regex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=\-{}[\]|:;"'<>,.?/~`]).{12,}$/;
-    return regex.test(password);
+    const validation = validatePassword(password);
+    return validation.success;
   }
 
   async function initializeClinic(e) {
@@ -146,18 +147,23 @@ function AdminDashboard() {
               // ...
             })
             .catch((error) => {
-              const errorCode = error.code;
-              const errorMessage = error.message;
-              // ..
-              console.log(errorCode + " | " + errorMessage);
+              // Log error securely without exposing details
+              console.error("Admin user creation failed");
+
               if (
-                errorCode == "auth/email-already-exists"
+                error.code == "auth/email-already-exists"
               ) {
-                alert("Invalid email address");
+                alert("Email address is already in use");
               } else if (
-                errorCode == "auth/weak-password"
+                error.code == "auth/weak-password"
               ) {
-                alert("Password is too weak");
+                alert(
+                  "Password does not meet security requirements"
+                );
+              } else {
+                alert(
+                  "Failed to create admin account. Please try again."
+                );
               }
             });
         }

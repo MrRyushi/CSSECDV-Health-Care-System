@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { config, } from "./firebase/Firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
 
 // Components
 import Navbar from "./pages/noAuth/components/Navbar";
@@ -10,7 +8,7 @@ import Information from "./pages/noAuth/information/Information";
 import QA from "./pages/noAuth/qa/QA";
 import Login from "./pages/noAuth/login/Login";
 import Pdashboard from "./pages/auth/patient/Pdashboard";
-import { AuthProvider } from './AuthContext';
+import { AuthProvider } from "./AuthContext";
 import Footer from "./pages/noAuth/components/Footer";
 import Test from "./pages/auth/patient/Test";
 
@@ -28,195 +26,163 @@ import Policy from "./pages/noAuth/policies/Policy";
 import Terms from "./pages/noAuth/policies/Terms";
 import ClinicVisits from "./pages/auth/staff/ClinicVisits";
 
-const ProtectedRoute = ({ children, accessLevel }) => {
-    const [loading, setLoading] = useState(true);
-    const [authorized, setAuthorized] = useState(false);
-    const [userAccess, setUserAccess] = useState(null);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(config.auth, (user) => {
-            if (user) {
-                // Split email on the @
-                var emailParts = user.email.split('@');
-                // Split again for every "."
-                var domainParts = emailParts[1].split('.');
-                // Grab account type since it's the second part ALWAYS
-                var accountType = domainParts[domainParts.length - 2];
-                setUserAccess(accountType);
-                if (accountType === accessLevel) {
-                    setAuthorized(true);
-                } else {
-                    switch (accountType) {
-                        case "clinic":
-                            setAuthorized(false);
-                            break;
-                        case "admin":
-                            setAuthorized(false);
-                            break;
-                        case "patient":
-                            setAuthorized(false);
-                            // Handle patient case
-                            break;
-                        case "locator":
-                            setAuthorized(false);
-                            // Handle locator case
-                            break;
-                        default:
-                            setAuthorized(false);
-                    }
-                }
-            } else {
-                setAuthorized(false);
-            }
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [accessLevel]);
-
-    if (loading) {
-        // Display a loading indicator while checking authentication
-        return <div>Loading...</div>;
-    }
-
-    if (!authorized) {
-        // User is not authorized, redirect to the login page
-        if (userAccess === null) {
-            return <Navigate to="/login" replace />;
-        } else if (userAccess === "admin") {
-            return <> <Navigate to="/admin" replace /> <AdminDashboard /></>
-        } else if (userAccess === "cad") {
-            return <> <Navigate to="/clinic-admin" replace /> <ClinicAdminDashboard /></>
-        } else if (userAccess === "staff") {
-            return <> <Navigate to="/clinic-staff" replace /> <StaffDashboard /></>
-        } else if (userAccess === "gmail") {
-            return <> <Navigate to="/patient" replace /> <Pdashboard /></>
-        }
-    }
-
-    return children;
-};
+// Centralized Authorization
+import ProtectedRoute from "./components/ProtectedRoute";
+import { USER_ROLES } from "./utils/AuthorizationManager";
 
 const App = () => {
-    return (
-        <AuthProvider>
-            <div className="h-max w-screen">
-                <Navbar />
-                <Routes>
-                    <Route path="/" element={<Landing />} />
-                    <Route path="/aboutus" element={<Information />} />
-                    <Route path="/questions" element={<QA />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/policies" element={<Policy />} />
-                    <Route path="/tac" element={<Terms />} />
-                    {/* SUPER ADMIN ROUTES */}
-                    <Route
-                        exact path="/admin"
-                        element={
-                            <ProtectedRoute accessLevel="admin">
-                                <AdminDashboard />
-                            </ProtectedRoute>
-                        }
-                    />
+  return (
+    <AuthProvider>
+      <div className="h-max w-screen">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route
+            path="/aboutus"
+            element={<Information />}
+          />
+          <Route path="/questions" element={<QA />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/policies" element={<Policy />} />
+          <Route path="/tac" element={<Terms />} />
+          {/* SUPER ADMIN ROUTES */}
+          <Route
+            exact
+            path="/admin"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.ADMIN}
+              >
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-                    {/* CLINIC ADMIN ROUTES */}
-                    <Route
-                        exact path="/clinic-admin"
-                        element={
-                            <ProtectedRoute accessLevel="cad">
-                                <ClinicAdminDashboard />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        exact path="/clinic-admin/stafflist"
-                        element={
-                            <ProtectedRoute accessLevel="cad">
-                                <StaffList />
-                            </ProtectedRoute>
-                        }
-                    />
+          {/* CLINIC ADMIN ROUTES */}
+          <Route
+            exact
+            path="/clinic-admin"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.CLINIC_ADMIN}
+              >
+                <ClinicAdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            exact
+            path="/clinic-admin/stafflist"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.CLINIC_ADMIN}
+              >
+                <StaffList />
+              </ProtectedRoute>
+            }
+          />
 
-                    {/* STAFF ROUTES */}
-                    <Route
-                        exact path="/clinic-staff"
-                        element={
-                            <ProtectedRoute accessLevel="staff">
-                                <StaffDashboard />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        exact path="/clinic-staff/patientlist"
-                        element={
-                            <ProtectedRoute accessLevel="staff">
-                                <PatientList />
-                            </ProtectedRoute>
-                        }
-                    />
+          {/* STAFF ROUTES */}
+          <Route
+            exact
+            path="/clinic-staff"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.STAFF}
+              >
+                <StaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            exact
+            path="/clinic-staff/patientlist"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.STAFF}
+              >
+                <PatientList />
+              </ProtectedRoute>
+            }
+          />
 
-                    <Route
-                        exact path="/clinic-staff/clinic-visits"
-                        element={
-                            <ProtectedRoute accessLevel="staff">
-                                <ClinicVisits />
-                            </ProtectedRoute>
-                        }
-                    />
+          <Route
+            exact
+            path="/clinic-staff/clinic-visits"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.STAFF}
+              >
+                <ClinicVisits />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* PATIENT ROUTES */}
+          <Route
+            exact
+            path="/patient/personal-information"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.PATIENT}
+              >
+                <PersonalInformation />
+              </ProtectedRoute>
+            }
+          />
 
+          <Route
+            exact
+            path="/patient/record-diagnoses"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.PATIENT}
+              >
+                <RecordDiagnoses />
+              </ProtectedRoute>
+            }
+          />
 
-                    {/* PATIENT ROUTES */}
-                    <Route
-                        exact path="/patient/personal-information"
-                        element={
-                            <ProtectedRoute accessLevel="gmail">
-                                <PersonalInformation />
-                            </ProtectedRoute>
-                        }
-                    />
+          <Route
+            exact
+            path="/patient"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.PATIENT}
+              >
+                <Pdashboard />
+              </ProtectedRoute>
+            }
+          />
 
-                    <Route
-                        exact path="/patient/record-diagnoses"
-                        element={
-                            <ProtectedRoute accessLevel="gmail">
-                                <RecordDiagnoses />
-                            </ProtectedRoute>
-                        }
-                    />
+          <Route
+            exact
+            path="/patient/PersonalInfo"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.PATIENT}
+              >
+                <PersonalInfo />
+              </ProtectedRoute>
+            }
+          />
 
-                    <Route
-                        exact path="/patient"
-                        element={
-                            <ProtectedRoute accessLevel="gmail">
-                                <Pdashboard />
-                            </ProtectedRoute>
-                        }
-                    />
-
-                    <Route
-                        exact path="/patient/PersonalInfo"
-                        element={
-                            <ProtectedRoute accessLevel="gmail">
-                                <PersonalInfo />
-                            </ProtectedRoute>
-                        }
-                    />
-
-                    <Route
-                        exact path="/test"
-                        element={
-                            <ProtectedRoute accessLevel="patient">
-                                <Test />
-                            </ProtectedRoute>
-                        }
-                    />
-
-                </Routes>
-                <Footer />
-            </div>
-        </AuthProvider>
-    );
+          <Route
+            exact
+            path="/test"
+            element={
+              <ProtectedRoute
+                requiredRole={USER_ROLES.PATIENT}
+              >
+                <Test />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+        <Footer />
+      </div>
+    </AuthProvider>
+  );
 };
 
 export default App;
