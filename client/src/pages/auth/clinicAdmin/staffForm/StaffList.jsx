@@ -126,47 +126,70 @@ function StaffList() {
                 formData.emailFormatted,
                 formData.password
               )
-                .then((userCredential) => {
-                  setDoc(
-                    doc(
-                      config.firestore,
-                      "clinicStaffs",
-                      userCredential.user.uid
-                    ),
-                    {
-                      clinicName: clinicName,
-                    }
-                  );
+                .then(async (userCredential) => {
+                  try {
+                    // Add staff to clinicStaffs collection
+                    await setDoc(
+                      doc(
+                        config.firestore,
+                        "clinicStaffs",
+                        userCredential.user.uid
+                      ),
+                      {
+                        clinicName: clinicName,
+                      }
+                    );
+                    console.log(
+                      "Staff added to clinicStaffs collection"
+                    );
 
-                  setDoc(
-                    doc(
-                      config.firestore,
-                      clinicName,
-                      "staff",
-                      "staffList",
-                      userCredential.user.uid
-                    ),
-                    {
-                      firstname: formData.firstName,
-                      lastname: formData.lastName,
-                      email: formData.email,
-                    }
-                  );
-                  sendEmail();
-                  // SignOut 2nd authentication
-                  signOut(getAuth(signInAuth.auth))
-                    .then(() => {
-                      // Sign-out successful.
-                    })
-                    .catch((error) => {
-                      // An error happened.
-                    });
-                  // ...
+                    // Add staff to clinic's staff list
+                    await setDoc(
+                      doc(
+                        config.firestore,
+                        clinicName,
+                        "staff",
+                        "staffList",
+                        userCredential.user.uid
+                      ),
+                      {
+                        firstname: formData.firstName,
+                        lastname: formData.lastName,
+                        email: formData.email,
+                      }
+                    );
+                    console.log(
+                      "Staff added to clinic staff list"
+                    );
+
+                    // Send email notification
+                    sendEmail();
+
+                    // SignOut 2nd authentication
+                    signOut(getAuth(signInAuth.auth))
+                      .then(() => {
+                        // Sign-out successful.
+                      })
+                      .catch((error) => {
+                        // An error happened.
+                      });
+                  } catch (firestoreError) {
+                    console.error(
+                      "Error adding staff to Firestore:",
+                      firestoreError
+                    );
+                    alert(
+                      "Staff account created but there was an error saving to database. Please contact support."
+                    );
+                  }
                 })
                 .catch((error) => {
                   console.error(
                     "Error creating user:",
                     error.message
+                  );
+                  alert(
+                    "Failed to create staff account. Please try again."
                   );
                 });
             } else {
