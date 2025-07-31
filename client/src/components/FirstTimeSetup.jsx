@@ -338,7 +338,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
                   : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               }`}
             >
-              {loading ? "Updating..." : "Change Password"}
+              {loading ? "Updating..." : "Complete Setup"}
             </button>
           </form>
         </div>
@@ -429,7 +429,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
                   : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               }`}
             >
-              {loading ? "Setting Up..." : "Complete Setup"}
+              {loading ? "Setting Up..." : "Change Password"}
             </button>
           </form>
         </div>
