@@ -155,6 +155,13 @@ const ChangePasswordPopup = ({ onClose }) => {
         setError(
           "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
         );
+      } else if (
+        err.code ===
+        "auth/password-does-not-meet-requirements"
+      ) {
+        setError(
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
+        );
       } else {
         setError(err.message || "An error occurred.");
       }
