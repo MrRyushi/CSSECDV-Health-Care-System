@@ -6,7 +6,13 @@ import {
   config,
   signInAuth,
 } from "../../../firebase/Firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
@@ -17,12 +23,15 @@ import {
   getAuth,
 } from "firebase/auth";
 import emailjs, { send } from "emailjs-com";
+import { generateTemporaryPassword } from "../../../utils/PasswordGenerator";
 
 function ClinicAdminDashboard() {
   const [adminName, setAdminName] = useState("");
   const [clinicName, setClinicName] = useState("");
   const [selected, setSelected] = useState("dashboard");
   const [showForm, setShowForm] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [searchName, setSearchName] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -113,15 +122,10 @@ function ClinicAdminDashboard() {
     const firstName = e.target["first-name"].value;
     const lastName = e.target["last-name"].value;
     const email = e.target["email"].value;
-    const password = e.target["password"].value;
     const emailFormatted = formatEmail(email);
 
-    if (!isPasswordComplex(password)) {
-      alert(
-        "Password must be at least 12 characters long and include an uppercase letter, lowercase letter, number, and special character."
-      );
-      return;
-    }
+    // Generate secure temporary password automatically
+    const tempPassword = generateTemporaryPassword(12);
 
     setFormData({
       ...formData,
@@ -129,7 +133,7 @@ function ClinicAdminDashboard() {
       lastName,
       email,
       emailFormatted,
-      password,
+      password: tempPassword,
     });
   }
 
@@ -203,6 +207,32 @@ function ClinicAdminDashboard() {
                     }
                   );
                   sendEmail();
+
+                  // Refresh staff list after adding new staff
+                  const updatedStaffCollection = collection(
+                    config.firestore,
+                    clinicName,
+                    "staff",
+                    "staffList"
+                  );
+                  getDocs(updatedStaffCollection)
+                    .then((updatedStaffSnapshot) => {
+                      const updatedStaffData =
+                        updatedStaffSnapshot.docs.map(
+                          (doc) => doc.data()
+                        );
+                      setStaffList(updatedStaffData);
+
+                      // Close the form
+                      setShowForm(false);
+                    })
+                    .catch((error) => {
+                      console.error(
+                        "Error refreshing staff list:",
+                        error
+                      );
+                    });
+
                   // SignOut 2nd authentication
                   signOut(getAuth(signInAuth.auth))
                     .then(() => {
@@ -232,6 +262,33 @@ function ClinicAdminDashboard() {
     }
   }, [formData]);
 
+  // Fetch staff list for enumeration
+  useEffect(() => {
+    async function fetchStaff() {
+      if (clinicName) {
+        try {
+          const staffCollection = collection(
+            config.firestore,
+            clinicName,
+            "staff",
+            "staffList"
+          );
+          const staffSnapshot = await getDocs(
+            staffCollection
+          );
+          const staffData = staffSnapshot.docs.map((doc) =>
+            doc.data()
+          );
+          setStaffList(staffData);
+        } catch (error) {
+          console.error("Error fetching staff:", error);
+        }
+      }
+    }
+
+    fetchStaff();
+  }, [clinicName]);
+
   return (
     <div className="h-screen w-full flex overflow-hidden bg-white">
       <Sidebar
@@ -252,80 +309,92 @@ function ClinicAdminDashboard() {
           <h1 className="text-4xl exo">
             Welcome Back, {adminName}
           </h1>
-          <div
-            className="mt-10"
-            style={{
-              width: "70vw",
-              height: "60vh",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <div
-              onClick={() => navigate("./stafflist")}
-              className="Pdashboard-Card-BoxShadow"
-              style={{
-                border: "2px solid #00008B",
-                backgroundColor: "#FBF7F4",
-                width: "35%",
-                height: "100%",
-                borderRadius: "20px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                flexDirection: "column",
-              }}
-            >
-              <div
-                style={{
-                  border: "2px solid #00008B",
-                  background:
-                    "linear-gradient(to bottom, #F6FFF0, #87CEEB)",
-                  width: "60%",
-                  height: "50%",
-                  borderRadius: "10px",
-                }}
-              ></div>
-              <br />
-              <span class="ml-3 text-blue-900 text-2xl text-center font-semibold">
-                View Staff
-                <br />
-                List
-              </span>
+
+          {/* Staff Enumeration Section */}
+          <div className="mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Staff Members
+              </h2>
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Add New Staff
+              </button>
             </div>
 
-            <div
-              className="Pdashboard-Card-BoxShadow"
-              style={{
-                border: "2px solid #00008B",
-                backgroundColor: "#FBF7F4",
-                width: "35%",
-                height: "100%",
-                borderRadius: "20px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                flexDirection: "column",
-                marginLeft: "8vh",
-              }}
-            >
-              <div
-                onClick={() => setShowForm(true)}
-                style={{
-                  border: "2px solid #00008B",
-                  background:
-                    "linear-gradient(to bottom, #F6FFF0, #87CEEB)",
-                  width: "60%",
-                  height: "50%",
-                  borderRadius: "10px",
-                }}
-              ></div>
-              <br />
-              <span class="ml-3 text-blue-900 text-2xl text-center font-semibold">
-                Add New <br />
-                Staff
-              </span>
+            {/* Search Bar */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Search staff by name..."
+                value={searchName}
+                onChange={(e) =>
+                  setSearchName(e.target.value)
+                }
+                className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Staff List */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="grid grid-cols-4 bg-blue-800 text-white p-4 font-semibold">
+                <div>#</div>
+                <div>First Name</div>
+                <div>Last Name</div>
+                <div>Email</div>
+              </div>
+
+              <div className="divide-y divide-gray-200">
+                {staffList
+                  .filter(
+                    (staff) =>
+                      staff.lastname
+                        ?.toLowerCase()
+                        .includes(
+                          searchName.toLowerCase()
+                        ) ||
+                      staff.firstname
+                        ?.toLowerCase()
+                        .includes(searchName.toLowerCase())
+                  )
+                  .map((staff, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-4 p-4 hover:bg-gray-50"
+                    >
+                      <div className="font-medium">
+                        {index + 1}
+                      </div>
+                      <div className="capitalize">
+                        {staff.firstname || "N/A"}
+                      </div>
+                      <div className="capitalize">
+                        {staff.lastname || "N/A"}
+                      </div>
+                      <div className="text-gray-600">
+                        {staff.email || "N/A"}
+                      </div>
+                    </div>
+                  ))}
+
+                {staffList.filter(
+                  (staff) =>
+                    staff.lastname
+                      ?.toLowerCase()
+                      .includes(searchName.toLowerCase()) ||
+                    staff.firstname
+                      ?.toLowerCase()
+                      .includes(searchName.toLowerCase())
+                ).length === 0 && (
+                  <div className="p-8 text-center text-gray-500">
+                    {searchName
+                      ? "No staff found matching your search."
+                      : "No staff members found."}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -746,7 +815,7 @@ function ClinicAdminDashboard() {
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        stroke-width="2"
+                        stroke-width="1"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                       />
                     </svg>
@@ -998,21 +1067,21 @@ function ClinicAdminDashboard() {
                       </div>
 
                       <div className="sm:col-span-full">
-                        <label
-                          htmlFor="password"
-                          className="block text-sm font-medium leading-6 text-black"
-                        >
-                          Password <RequiredAsterisk />
+                        <label className="block text-sm font-medium leading-6 text-black">
+                          Temporary Password
                         </label>
                         <div className="mt-2">
-                          <input
-                            type="password"
-                            name="password"
-                            id="password"
-                            autoComplete="current-password"
-                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 p-3"
-                            required
-                          />
+                          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                            A secure temporary password will
+                            be automatically generated and
+                            sent to the user's email
+                            address.
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            The user will receive the
+                            temporary password via email and
+                            must change it on first login.
+                          </p>
                         </div>
                       </div>
                     </div>
