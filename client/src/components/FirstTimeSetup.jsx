@@ -8,7 +8,7 @@ import {
   validateSecurityAnswer,
   hashSecurityAnswer,
 } from "../utils/SecurityQuestions";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/Firebase";
 import { useSecurityLogging } from "../utils/LoggingSystem";
 import { updatePassword } from "firebase/auth";
@@ -21,7 +21,7 @@ import { AuthContext } from "../AuthContext";
  * Required for all users on their first login
  */
 const FirstTimeSetup = ({ user, onComplete }) => {
-  const [step, setStep] = useState(1); // 1: password change, 2: security questions
+  const [step, setStep] = useState(1); // 2: password change, 1: security questions
   const [currentPassword, setCurrentPassword] =
     useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -94,7 +94,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
     };
   }, []);
 
-  // Step 1: Change password
+  // Step 2: Change password
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -107,9 +107,9 @@ const FirstTimeSetup = ({ user, onComplete }) => {
         return;
       }
 
-      if (newPassword.length < 8) {
+      if (newPassword.length < 12) {
         setError(
-          "Password must be at least 8 characters long"
+          "Password must be at least 12 characters long"
         );
         return;
       }
@@ -124,8 +124,9 @@ const FirstTimeSetup = ({ user, onComplete }) => {
         context: "first_time_setup",
       });
 
-      // Move to security questions step
-      setStep(2);
+      // Complete setup
+      onComplete();
+      setIsInSetup(false); // Set isInSetup to false after setup is completed
     } catch (error) {
       const errorMessage =
         error.code === "auth/wrong-password"
@@ -142,7 +143,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
     }
   };
 
-  // Step 2: Set up security questions
+  // Step 1: Set up security questions
   const handleSecurityQuestionsSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -185,7 +186,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
 
       // Store security questions and answers in Firestore
       const userRef = doc(db, "userLogins", user.uid);
-      await updateDoc(userRef, {
+      await setDoc(userRef, {
         securityQuestions: securityQuestions.map((q) => ({
           id: q.id,
           question: q.question,
@@ -202,10 +203,9 @@ const FirstTimeSetup = ({ user, onComplete }) => {
         userEmail: user.email,
         questionsCount: securityQuestions.length,
       });
+      // Proceed to password change step
+      setStep(2);
 
-      // Complete setup
-      onComplete();
-      setIsInSetup(false); // Set isInSetup to false after setup is completed
     } catch (error) {
       setError(
         "Failed to save security questions. Please try again."
@@ -219,7 +219,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
     }
   };
 
-  if (step === 1) {
+  if (step === 2) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
@@ -247,7 +247,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
               the system
             </p>
             <p className="mt-1 text-sm text-gray-500">
-              Step 1 of 2: Change Your Password
+              Step 2 of 2: Change Your Password
             </p>
           </div>
 
@@ -346,7 +346,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
     );
   }
 
-  if (step === 2) {
+  if (step === 1) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
@@ -374,7 +374,7 @@ const FirstTimeSetup = ({ user, onComplete }) => {
               recovery
             </p>
             <p className="mt-1 text-sm text-gray-500">
-              Step 2 of 2: Security Questions Setup
+              Step 1 of 2: Security Questions Setup
             </p>
           </div>
 

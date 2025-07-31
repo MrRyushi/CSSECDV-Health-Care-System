@@ -97,6 +97,21 @@ class LogEntry {
     this.sessionId = this.getSessionId();
   }
 
+  // Convert to plain object for Firestore
+  toJSON() {
+    return {
+      timestamp: this.timestamp,
+      event: this.event,
+      severity: this.severity,
+      details: this.details,
+      userId: this.userId,
+      userRole: this.userRole,
+      ipAddress: this.ipAddress,
+      userAgent: this.userAgent,
+      sessionId: this.sessionId,
+    };
+  }
+
   getClientIP() {
     // In a real application, this would be obtained from the server
     // For now, we'll use a placeholder
@@ -160,7 +175,7 @@ class SecurityLogger {
       // Store in Firestore
       await addDoc(
         collection(db, this.logsCollection),
-        logEntry
+        logEntry.toJSON()
       );
 
       // Enhanced console logging for development
