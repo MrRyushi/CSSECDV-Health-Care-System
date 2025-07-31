@@ -68,6 +68,14 @@ const ChangePasswordPopup = ({ onClose }) => {
       return;
     }
 
+    // Check if new password is the same as current password
+    if (newPassword === currentPassword) {
+      setError(
+        "New password can't be the same as current password."
+      );
+      return;
+    }
+
     try {
       const docSnap = await getDoc(userRef);
       const userData = docSnap.exists()
@@ -143,6 +151,13 @@ const ChangePasswordPopup = ({ onClose }) => {
       if (err.code === "auth/requires-recent-login") {
         setError(
           "For security reasons, please log out and log back in before changing your password."
+        );
+      } else if (
+        err.code ===
+        "auth/password-does-not-meet-requirements"
+      ) {
+        setError(
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
         );
       } else {
         setError(err.message || "An error occurred.");
